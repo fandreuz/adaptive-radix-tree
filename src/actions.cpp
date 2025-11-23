@@ -21,7 +21,8 @@ bool search(Nodes::Header* node_header_ptr, KEY /* key, key_len */,
     return false;
 
   if (Nodes::isLeaf(*next_src)) {
-    return key == Nodes::asLeaf(*next_src)->key;
+    auto leaf = Nodes::asLeaf(*next_src);
+    return key_len == leaf->key_len && memcmp(leaf->key, key, key_len);
   }
 
   return search((Nodes::Header*)*next_src, key, key_len, depth + 1);

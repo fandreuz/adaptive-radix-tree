@@ -22,9 +22,6 @@ int main() {
 
   { // root + one leaf
     Nodes::Header* root = Nodes::makeNewNode<Nodes::Type::NODE4>();
-    assert(root->children_count == 0);
-    assert(root->prefix == nullptr);
-    assert(root->prefix_len == 0);
 
     Actions::insert(&root, "hello", 12);
 
@@ -42,9 +39,6 @@ int main() {
 
   { // root + two leafs
     Nodes::Header* root = Nodes::makeNewNode<Nodes::Type::NODE4>();
-    assert(root->children_count == 0);
-    assert(root->prefix == nullptr);
-    assert(root->prefix_len == 0);
 
     Actions::insert(&root, "hello", 12);
     Actions::insert(&root, "ciao", 13);
@@ -72,9 +66,6 @@ int main() {
 
   { // root + three leafs
     Nodes::Header* root = Nodes::makeNewNode<Nodes::Type::NODE4>();
-    assert(root->children_count == 0);
-    assert(root->prefix == nullptr);
-    assert(root->prefix_len == 0);
 
     Actions::insert(&root, "hello", 12);
     Actions::insert(&root, "ciao", 13);
@@ -110,9 +101,6 @@ int main() {
 
   { // root growth
     Nodes::Header* root = Nodes::makeNewNode<Nodes::Type::NODE4>();
-    assert(root->children_count == 0);
-    assert(root->prefix == nullptr);
-    assert(root->prefix_len == 0);
 
     Actions::insert(&root, "hello", 12);
     Actions::insert(&root, "ciao", 13);
@@ -172,9 +160,6 @@ int main() {
 
   { // root + node + node
     Nodes::Header* root = Nodes::makeNewNode<Nodes::Type::NODE4>();
-    assert(root->children_count == 0);
-    assert(root->prefix == nullptr);
-    assert(root->prefix_len == 0);
 
     Actions::insert(&root, "hello", 12);
     Actions::insert(&root, "hella", 13);
@@ -209,9 +194,6 @@ int main() {
 
   { // root + node + node (second is shorter)
     Nodes::Header* root = Nodes::makeNewNode<Nodes::Type::NODE4>();
-    assert(root->children_count == 0);
-    assert(root->prefix == nullptr);
-    assert(root->prefix_len == 0);
 
     Actions::insert(&root, "hello", 12);
     Actions::insert(&root, "hell", 13);

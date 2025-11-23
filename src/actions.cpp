@@ -45,8 +45,7 @@ void insert(
     Nodes::Header* new_node_header = Nodes::makeNewNode<Nodes::Type::NODE4>();
     Nodes::Node4* new_node = (Nodes::Node4*)new_node_header->getNode();
     new_node_header->prefix_len = first_diff;
-    new_node_header->prefix =
-        (uint8_t*)malloc(first_diff * sizeof(uint8_t)); // TODO: arena
+    new_node_header->prefix = (uint8_t*)malloc(first_diff * sizeof(uint8_t));
     new_node_header->children_count = 2;
 
     memcpy(new_node_header->prefix, (*node_header_ptr)->prefix, first_diff);
@@ -97,8 +96,8 @@ void insert(
     }
 
     new_node_header->prefix_len = i - depth;
-    new_node_header->prefix = (uint8_t*)malloc(new_node_header->prefix_len *
-                                               sizeof(uint8_t)); // TODO: arena
+    new_node_header->prefix =
+        (uint8_t*)malloc(new_node_header->prefix_len * sizeof(uint8_t));
     new_node_header->children_count = 2;
     memcpy(new_node_header->prefix, leaf->key.data + depth,
            new_node_header->prefix_len);

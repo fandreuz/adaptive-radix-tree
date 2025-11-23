@@ -29,8 +29,7 @@ constexpr size_t nodeSize(Type nt) {
 }
 
 template <Type NT> Header* makeNewNode() {
-  Header* header =
-      (Header*)malloc(sizeof(Header) + nodeSize(NT)); // TODO: arena
+  Header* header = (Header*)malloc(sizeof(Header) + nodeSize(NT));
   header->type = NT;
   header->prefix_len = 0;
   header->prefix = nullptr;

@@ -4,6 +4,10 @@
 #include <iostream>
 #include <string>
 
+#define ASSERT_KEY_EQ(leaf, expected)                                          \
+  assert(leaf->key_len == strlen(expected) + 1);                               \
+  assert(memcmp(leaf->key, expected, leaf->key_len - 1) == 0);
+
 int main() {
   { // new node
     Nodes::Header* root = Nodes::makeNewNode<Nodes::Type::NODE4>();
@@ -28,7 +32,7 @@ int main() {
     assert(node->keys[0] == 'h');
     assert(Nodes::isLeaf(node->children[0]));
     auto leaf = Nodes::asLeaf(node->children[0]);
-    assert(leaf->key == "hello");
+    ASSERT_KEY_EQ(leaf, "hello");
     assert(leaf->value == 12);
   }
 
@@ -50,14 +54,14 @@ int main() {
       assert(node->keys[0] == 'c');
       assert(Nodes::isLeaf(node->children[0]));
       auto leaf = Nodes::asLeaf(node->children[0]);
-      assert(leaf->key == "ciao");
+      ASSERT_KEY_EQ(leaf, "ciao");
       assert(leaf->value == 13);
     }
     {
       assert(node->keys[1] == 'h');
       assert(Nodes::isLeaf(node->children[1]));
       auto leaf = Nodes::asLeaf(node->children[1]);
-      assert(leaf->key == "hello");
+      ASSERT_KEY_EQ(leaf, "hello");
       assert(leaf->value == 12);
     }
   }
@@ -81,21 +85,21 @@ int main() {
       assert(node->keys[0] == 'b');
       assert(Nodes::isLeaf(node->children[0]));
       auto leaf = Nodes::asLeaf(node->children[0]);
-      assert(leaf->key == "bonjour");
+      ASSERT_KEY_EQ(leaf, "bonjour");
       assert(leaf->value == 14);
     }
     {
       assert(node->keys[1] == 'c');
       assert(Nodes::isLeaf(node->children[1]));
       auto leaf = Nodes::asLeaf(node->children[1]);
-      assert(leaf->key == "ciao");
+      ASSERT_KEY_EQ(leaf, "ciao");
       assert(leaf->value == 13);
     }
     {
       assert(node->keys[2] == 'h');
       assert(Nodes::isLeaf(node->children[2]));
       auto leaf = Nodes::asLeaf(node->children[2]);
-      assert(leaf->key == "hello");
+      ASSERT_KEY_EQ(leaf, "hello");
       assert(leaf->value == 12);
     }
   }
@@ -122,35 +126,35 @@ int main() {
       assert(node->keys[0] == 'a');
       assert(Nodes::isLeaf(node->children[0]));
       auto leaf = Nodes::asLeaf(node->children[0]);
-      assert(leaf->key == "aufwiedersehen");
+      ASSERT_KEY_EQ(leaf, "aufwiedersehen");
       assert(leaf->value == 16);
     }
     {
       assert(node->keys[1] == 'b');
       assert(Nodes::isLeaf(node->children[1]));
       auto leaf = Nodes::asLeaf(node->children[1]);
-      assert(leaf->key == "bonjour");
+      ASSERT_KEY_EQ(leaf, "bonjour");
       assert(leaf->value == 14);
     }
     {
       assert(node->keys[2] == 'c');
       assert(Nodes::isLeaf(node->children[2]));
       auto leaf = Nodes::asLeaf(node->children[2]);
-      assert(leaf->key == "ciao");
+      ASSERT_KEY_EQ(leaf, "ciao");
       assert(leaf->value == 13);
     }
     {
       assert(node->keys[3] == 'd');
       assert(Nodes::isLeaf(node->children[3]));
       auto leaf = Nodes::asLeaf(node->children[3]);
-      assert(leaf->key == "doberdan");
+      ASSERT_KEY_EQ(leaf, "doberdan");
       assert(leaf->value == 15);
     }
     {
       assert(node->keys[4] == 'h');
       assert(Nodes::isLeaf(node->children[4]));
       auto leaf = Nodes::asLeaf(node->children[4]);
-      assert(leaf->key == "hello");
+      ASSERT_KEY_EQ(leaf, "hello");
       assert(leaf->value == 12);
     }
   }
@@ -180,14 +184,14 @@ int main() {
       assert(node->keys[0] == 'a');
       assert(Nodes::isLeaf(node->children[0]));
       auto leaf = Nodes::asLeaf(node->children[0]);
-      assert(leaf->key == "hella");
+      ASSERT_KEY_EQ(leaf, "hella");
       assert(leaf->value == 13);
     }
     {
       assert(node->keys[1] == 'o');
       assert(Nodes::isLeaf(node->children[1]));
       auto leaf = Nodes::asLeaf(node->children[1]);
-      assert(leaf->key == "hello");
+      ASSERT_KEY_EQ(leaf, "hello");
       assert(leaf->value == 12);
     }
   }
@@ -218,14 +222,14 @@ int main() {
       assert(node->keys[0] == 0);
       assert(Nodes::isLeaf(node->children[0]));
       auto leaf = Nodes::asLeaf(node->children[0]);
-      assert(leaf->key == "hell");
+      ASSERT_KEY_EQ(leaf, "hell");
       assert(leaf->value == 13);
     }
     {
       assert(node->keys[1] == 'o');
       assert(Nodes::isLeaf(node->children[1]));
       auto leaf = Nodes::asLeaf(node->children[1]);
-      assert(leaf->key == "hello");
+      ASSERT_KEY_EQ(leaf, "hello");
       assert(leaf->value == 12);
     }
   }

@@ -49,9 +49,10 @@ template Header* makeNewNode<Type::NODE16>();
 template Header* makeNewNode<Type::NODE48>();
 template Header* makeNewNode<Type::NODE256>();
 
-Leaf* makeNewLeaf(Key key, Value value) {
+Leaf* makeNewLeaf(const uint8_t* key, size_t key_len, Value value) {
   Leaf* leaf = (Leaf*)malloc(sizeof(Leaf));
   leaf->key = key;
+  leaf->key_len = key_len;
   leaf->value = value;
   return leaf;
 }
@@ -123,8 +124,8 @@ void maybeGrow(Header** node_header) {
 }
 
 // TODO: Improve
-void addChildSmallNode(uint8_t* keys, void** children, uint8_t count, Key key,
-                       Value value, size_t depth) {
+void addChildSmallNode(uint8_t* keys, void** children, uint8_t count,
+                       KEY /* key, key_len */, Value value, size_t depth) {
   uint8_t i = 0;
   while (children[i] != nullptr && keys[i] < key[depth])
     ++i;
@@ -135,27 +136,31 @@ void addChildSmallNode(uint8_t* keys, void** children, uint8_t count, Key key,
   memmove(children + i + 1, children + i, (count - i - 1) * sizeof(void**));
 
   keys[i] = key[depth];
-  children[i] = smuggleLeaf(makeNewLeaf(key, value));
+  children[i] = smuggleLeaf(makeNewLeaf(key, key_len, value));
 }
 
-void addChild(Header* node_header, Key key, Value value, size_t depth) {
+void addChild(Header* node_header, KEY /* key, key_len */, Value value,
+              size_t depth) {
   assert(!isFull(node_header));
 
   if (node_header->type == Type::NODE4) {
     Node4* node = (Node4*)node_header->getNode();
-    addChildSmallNode(node->keys, node->children, 4, key, value, depth);
+    addChildSmallNode(node->keys, node->children, 4, key, key_len, value,
+                      depth);
   } else if (node_header->type == Type::NODE16) {
     Node16* node = (Node16*)node_header->getNode();
-    addChildSmallNode(node->keys, node->children, 16, key, value, depth);
+    addChildSmallNode(node->keys, node->children, 16, key, key_len, value,
+                      depth);
   } else if (node_header->type == Type::NODE48) {
     Node48* node = (Node48*)node_header->getNode();
     uint8_t child_index = node->child_index[(uint8_t)key[depth]];
     assert(child_index == Node48::EMPTY);
-    node->children[child_index] = smuggleLeaf(makeNewLeaf(key, value));
+    node->children[child_index] = smuggleLeaf(makeNewLeaf(key, key_len, value));
   } else if (node_header->type == Type::NODE256) {
     Node256* node = (Node256*)node_header->getNode();
     assert(node->children[(uint8_t)key[depth]] == nullptr);
-    node->children[(uint8_t)key[depth]] = smuggleLeaf(makeNewLeaf(key, value));
+    node->children[(uint8_t)key[depth]] =
+        smuggleLeaf(makeNewLeaf(key, key_len, value));
   } else {
     ShouldNotReachHere;
   }

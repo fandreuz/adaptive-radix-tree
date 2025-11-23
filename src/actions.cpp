@@ -5,8 +5,9 @@
 
 namespace Actions {
 
-bool search(Nodes::Header* node_header_ptr, Key key, size_t depth) {
-  if (key.length < depth + node_header_ptr->prefix_len)
+bool search(Nodes::Header* node_header_ptr, KEY /* key, key_len */,
+            size_t depth) {
+  if (key_len < depth + node_header_ptr->prefix_len)
     return false;
 
   for (size_t i = 0; i < node_header_ptr->prefix_len; ++i) {
@@ -23,7 +24,7 @@ bool search(Nodes::Header* node_header_ptr, Key key, size_t depth) {
     return key == Nodes::asLeaf(*next_src)->key;
   }
 
-  return search((Nodes::Header*)*next_src, key, depth + 1);
+  return search((Nodes::Header*)*next_src, key, key_len, depth + 1);
 }
 
 void insertInOrder(Nodes::Node4* new_node, uint8_t k1, uint8_t k2, void* v1,
@@ -48,15 +49,15 @@ void insertInOrder(Nodes::Node4* new_node, uint8_t k1, uint8_t k2, void* v1,
 void insert(
     Nodes::Header**
         node_header_ptr /* pointer to the parent's pointer to the child */,
-    Key key, Value value, size_t depth) {
+    KEY /* key, key_len */, Value value, size_t depth) {
   assert(node_header_ptr != nullptr);
   assert(*node_header_ptr != nullptr);
   assert(!Nodes::isLeaf(*node_header_ptr));
-  assert(depth < key.length);
+  assert(depth < key_len);
 
   size_t first_diff;
   for (first_diff = 0;
-       first_diff < (*node_header_ptr)->prefix_len && first_diff < key.length;
+       first_diff < (*node_header_ptr)->prefix_len && first_diff < key_len;
        ++first_diff) {
     if (key[depth + first_diff] == (*node_header_ptr)->prefix[first_diff])
       break;
@@ -75,7 +76,7 @@ void insert(
     memmove((*node_header_ptr)->prefix, (*node_header_ptr)->prefix + first_diff,
             (*node_header_ptr)->prefix_len);
 
-    Nodes::Leaf* new_leaf = Nodes::makeNewLeaf(key, value);
+    Nodes::Leaf* new_leaf = Nodes::makeNewLeaf(key, key_len, value);
     insertInOrder(new_node, key[first_diff],
                   (*node_header_ptr)->prefix[first_diff],
                   Nodes::smuggleLeaf(new_leaf), *node_header_ptr);
@@ -89,14 +90,14 @@ void insert(
   void** next_src = Nodes::findChild(*node_header_ptr, key[depth]);
   if (next_src == nullptr || *next_src == nullptr) {
     Nodes::maybeGrow(node_header_ptr);
-    Nodes::addChild(*node_header_ptr, key, value, depth);
+    Nodes::addChild(*node_header_ptr, key, key_len, value, depth);
     return;
   }
 
   depth += 1;
   if (Nodes::isLeaf(*next_src)) {
     Nodes::Leaf* leaf = Nodes::asLeaf(*next_src);
-    Nodes::Leaf* new_leaf = Nodes::makeNewLeaf(key, value);
+    Nodes::Leaf* new_leaf = Nodes::makeNewLeaf(key, key_len, value);
 
     // The new parent of both leaf and the new value
     Nodes::Header* new_node_header = Nodes::makeNewNode<Nodes::Type::NODE4>();
@@ -104,8 +105,8 @@ void insert(
 
     // What is the common key segment?
     size_t i = depth;
-    while (i - depth < Nodes::PREFIX_SIZE && i < key.length &&
-           i < leaf->key.length && key[i] == leaf->key[i]) {
+    while (i - depth < Nodes::PREFIX_SIZE && i < key_len && i < leaf->key_len &&
+           key[i] == leaf->key[i]) {
       ++i;
     }
 
@@ -113,7 +114,7 @@ void insert(
     new_node_header->prefix =
         (uint8_t*)malloc(new_node_header->prefix_len * sizeof(uint8_t));
     new_node_header->children_count = 2;
-    memcpy(new_node_header->prefix, leaf->key.data + depth,
+    memcpy(new_node_header->prefix, leaf->key + depth,
            new_node_header->prefix_len);
 
     insertInOrder(new_node, key[i], leaf->key[i], Nodes::smuggleLeaf(new_leaf),
@@ -123,7 +124,7 @@ void insert(
   }
 
   Nodes::Header** next_header_ptr = (Nodes::Header**)next_src;
-  insert(next_header_ptr, key, value, depth);
+  insert(next_header_ptr, key, key_len, value, depth);
 }
 
 } // namespace Actions

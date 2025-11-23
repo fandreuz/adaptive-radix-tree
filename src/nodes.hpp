@@ -6,35 +6,7 @@
 #include <cstring>
 #include <iostream>
 
-class Key {
-public:
-  size_t length;
-  const char* data;
-
-  Key(const char* s) {
-    length = strlen(s) + 1;
-    char* c = (char*)malloc(length);
-    memcpy(c, s, length - 1);
-    c[length - 1] = 0;
-    data = (const char*)c;
-  }
-
-  char operator[](size_t idx) const { return data[idx]; }
-
-  bool operator==(const Key& o) const {
-    return o.length == length && memcmp(data, o.data, length) == 0;
-  }
-
-  bool operator==(const char* s) const {
-    return strlen(s) + 1 == length && memcmp(data, s, length - 1) == 0;
-  }
-
-  friend std::ostream& operator<<(std::ostream& os, const Key& k) {
-    os << k.data;
-    return os;
-  }
-};
-
+#define KEY const uint8_t *key, size_t key_len
 typedef uint64_t Value;
 
 namespace Nodes {
@@ -53,7 +25,8 @@ struct Header {
 };
 
 struct Leaf {
-  Key key;
+  const uint8_t* key;
+  size_t key_len;
   Value value;
 };
 
@@ -85,7 +58,7 @@ constexpr size_t nodeSize(Type nt);
 // Check if we should grow the node before adding a new child
 void maybeGrow(Header** node_header);
 
-void addChild(Header* node_header, Key key, Value value, size_t depth);
+void addChild(Header* node_header, KEY, Value value, size_t depth);
 void** findChild(Nodes::Header* node_header, uint8_t key);
 void print(Header* node_header, std::ostream& os, size_t depth = 0);
 
@@ -101,7 +74,7 @@ inline void* smuggleLeaf(Leaf* leaf) {
   return (void*)(((uintptr_t)leaf) + 1);
 }
 
-Leaf* makeNewLeaf(Key key, Value value);
+Leaf* makeNewLeaf(KEY, Value value);
 
 } // namespace Nodes
 

@@ -25,6 +25,10 @@ bool search(Nodes::Header* node_header_ptr, Key key, size_t depth) {
 
 void insertInOrder(Nodes::Node4* new_node, uint8_t k1, uint8_t k2, void* v1,
                    void* v2) {
+  assert(new_node->keys[0] == 0);
+  assert(new_node->keys[1] == 0);
+  assert(new_node->children[0] == nullptr);
+  assert(new_node->children[1] == nullptr);
   if (k1 < k2) {
     new_node->keys[0] = k1;
     new_node->children[0] = v1;

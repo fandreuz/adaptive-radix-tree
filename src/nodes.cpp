@@ -130,14 +130,15 @@ void maybeGrow(Header** node_header) {
 // TODO: Improve
 void addChildSmallNode(uint8_t* keys, void** children, uint8_t count,
                        KEY /* key, key_len */, Value value, size_t depth) {
-  uint8_t i = 0;
-  while (children[i] != nullptr && keys[i] < key[depth])
-    ++i;
+  uint8_t i;
+  for (i = 0; i < count && keys[i] < key[depth]; ++i)
+    ;
 
-  // No match, otherwise we would have found it while calling findChild()
-  assert(keys[i] != key[depth]);
-  memmove(keys + i + 1, keys + i, count - i - 1);
-  memmove(children + i + 1, children + i, (count - i - 1) * sizeof(void**));
+  size_t shift_count = count - i;
+  if (shift_count > 0) {
+    memmove(keys + i + 1, keys + i, shift_count);
+    memmove(children + i + 1, children + i, shift_count * sizeof(void**));
+  }
 
   keys[i] = key[depth];
   children[i] = smuggleLeaf(makeNewLeaf(key, key_len, value));
@@ -149,10 +150,12 @@ void addChild(Header* node_header, KEY /* key, key_len */, Value value,
 
   if (node_header->type == Type::NODE4) {
     Node4* node = (Node4*)node_header->getNode();
-    addChildSmallNode(node->keys, node->children, 4, KARGS, value, depth);
+    addChildSmallNode(node->keys, node->children, node_header->children_count,
+                      KARGS, value, depth);
   } else if (node_header->type == Type::NODE16) {
     Node16* node = (Node16*)node_header->getNode();
-    addChildSmallNode(node->keys, node->children, 16, KARGS, value, depth);
+    addChildSmallNode(node->keys, node->children, node_header->children_count,
+                      KARGS, value, depth);
   } else if (node_header->type == Type::NODE48) {
     Node48* node = (Node48*)node_header->getNode();
     assert(node->child_index[(uint8_t)key[depth]] == Node48::EMPTY);
@@ -168,7 +171,7 @@ void addChild(Header* node_header, KEY /* key, key_len */, Value value,
     ShouldNotReachHere;
   }
 
-  ++node_header->children_count;
+  ++(node_header->children_count);
 }
 
 // TODO: Improve
@@ -185,10 +188,12 @@ void** findChildSmallNode(uint8_t* keys, void** children, uint8_t key,
 void** findChild(Header* node_header, uint8_t key) {
   if (node_header->type == Type::NODE4) {
     auto node = (Node4*)node_header->getNode();
-    return findChildSmallNode(node->keys, node->children, key, 4);
+    return findChildSmallNode(node->keys, node->children, key,
+                              node_header->children_count);
   } else if (node_header->type == Type::NODE16) {
     auto node = (Node16*)node_header->getNode();
-    return findChildSmallNode(node->keys, node->children, key, 16);
+    return findChildSmallNode(node->keys, node->children, key,
+                              node_header->children_count);
   } else if (node_header->type == Type::NODE48) {
     auto node = (Node48*)node_header->getNode();
     uint8_t child_index = node->child_index[key];

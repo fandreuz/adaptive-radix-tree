@@ -13,7 +13,6 @@ typedef uint64_t Value;
 namespace Nodes {
 
 const size_t PREFIX_SIZE = 8;
-#define GET_PREFIX_SIZE(l) l >= Nodes::PREFIX_SIZE ? Nodes::PREFIX_SIZE : l;
 
 enum class Type : uint8_t { NODE4, NODE16, NODE48, NODE256 };
 

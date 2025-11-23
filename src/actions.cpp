@@ -3,6 +3,10 @@
 #include <cassert>
 #include <cstring>
 
+size_t min(size_t a, size_t b) {
+  return a < b ? a : b;
+}
+
 namespace Actions {
 
 const Value* searchImpl(Nodes::Header* node_header_ptr, KEY /* key, key_len */,
@@ -68,11 +72,10 @@ void insertImpl(
   assert(!Nodes::isLeaf(*node_header_ptr));
   assert(depth < key_len);
 
+  size_t stop = min(min((*node_header_ptr)->prefix_len, key_len), Nodes::PREFIX_SIZE);
   size_t i;
-  for (i = 0; i < (*node_header_ptr)->prefix_len && i < key_len; ++i) {
-    if (key[depth + i] == (*node_header_ptr)->prefix[i])
-      break;
-  }
+  for (i = 0; i < stop && key[depth + i] == (*node_header_ptr)->prefix[i]; ++i)
+    ;
 
   // prefix differs, create a new common parent
   if (i < (*node_header_ptr)->prefix_len) {
@@ -118,7 +121,7 @@ void insertImpl(
     }
 
     new_node_header->prefix_len = i - depth;
-    size_t prefix_size = GET_PREFIX_SIZE(new_node_header->prefix_len);
+    size_t prefix_size = min(new_node_header->prefix_len, Nodes::PREFIX_SIZE);
     new_node_header->prefix = (uint8_t*)malloc(prefix_size * sizeof(uint8_t));
     new_node_header->children_count = 2;
     memcpy(new_node_header->prefix, leaf->key + depth,

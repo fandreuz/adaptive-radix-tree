@@ -23,6 +23,21 @@ bool search(Nodes::Header* node_header_ptr, Key key, size_t depth) {
   return search((Nodes::Header*)*next_src, key, depth + 1);
 }
 
+void insertInOrder(Nodes::Node4* new_node, uint8_t k1, uint8_t k2, void* v1,
+                   void* v2) {
+  if (k1 < k2) {
+    new_node->keys[0] = k1;
+    new_node->children[0] = v1;
+    new_node->keys[1] = k2;
+    new_node->children[1] = v2;
+  } else {
+    new_node->keys[0] = k2;
+    new_node->children[0] = v2;
+    new_node->keys[1] = k1;
+    new_node->children[1] = v1;
+  }
+}
+
 void insert(
     Nodes::Header**
         node_header_ptr /* pointer to the parent's pointer to the child */,
@@ -54,17 +69,9 @@ void insert(
             (*node_header_ptr)->prefix_len);
 
     Nodes::Leaf* new_leaf = Nodes::makeNewLeaf(key, value);
-    if (key[first_diff] < (*node_header_ptr)->prefix[first_diff]) {
-      new_node->keys[0] = key[first_diff];
-      new_node->children[0] = Nodes::smuggleLeaf(new_leaf);
-      new_node->keys[1] = (*node_header_ptr)->prefix[first_diff];
-      new_node->children[1] = *node_header_ptr;
-    } else {
-      new_node->keys[0] = (*node_header_ptr)->prefix[first_diff];
-      new_node->children[0] = *node_header_ptr;
-      new_node->keys[1] = key[first_diff];
-      new_node->children[1] = Nodes::smuggleLeaf(new_leaf);
-    }
+    insertInOrder(new_node, key[first_diff],
+                  (*node_header_ptr)->prefix[first_diff],
+                  Nodes::smuggleLeaf(new_leaf), *node_header_ptr);
     *node_header_ptr = new_node_header;
     return;
   }
@@ -102,17 +109,8 @@ void insert(
     memcpy(new_node_header->prefix, leaf->key.data + depth,
            new_node_header->prefix_len);
 
-    if (key[i] < leaf->key[i]) {
-      new_node->keys[0] = key[i];
-      new_node->children[0] = Nodes::smuggleLeaf(new_leaf);
-      new_node->keys[1] = leaf->key[i];
-      new_node->children[1] = Nodes::smuggleLeaf(leaf);
-    } else {
-      new_node->keys[0] = leaf->key[i];
-      new_node->children[0] = Nodes::smuggleLeaf(leaf);
-      new_node->keys[1] = key[i];
-      new_node->children[1] = Nodes::smuggleLeaf(new_leaf);
-    }
+    insertInOrder(new_node, key[i], leaf->key[i], Nodes::smuggleLeaf(new_leaf),
+                  Nodes::smuggleLeaf(leaf));
     *next_src = new_node_header;
     return;
   }

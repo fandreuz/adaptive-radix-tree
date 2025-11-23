@@ -271,4 +271,52 @@ int main() {
       ASSERT_VALUE(Actions::search(root, key, 2), (Value)(100 + i));
     }
   }
+
+  { // common prefix
+    Nodes::Header* root = Nodes::makeNewNode<Nodes::Type::NODE4>();
+
+    uint8_t key[Nodes::PREFIX_SIZE + 3]; // prefix + eq + diff + 0
+    for (size_t i = 0; i < Nodes::PREFIX_SIZE + 2; ++i) {
+      key[i] = 1;
+    }
+    key[Nodes::PREFIX_SIZE + 2] = 0;
+    Actions::insert(&root, key, Nodes::PREFIX_SIZE + 3, 10);
+    ASSERT_VALUE(Actions::search(root, key, Nodes::PREFIX_SIZE + 3), (Value)10);
+
+    uint8_t key2[Nodes::PREFIX_SIZE + 3];
+    for (size_t i = 0; i < Nodes::PREFIX_SIZE + 1; ++i) {
+      key2[i] = 1;
+    }
+    key2[Nodes::PREFIX_SIZE + 1] = 2;
+    key2[Nodes::PREFIX_SIZE + 2] = 0;
+    Actions::insert(&root, key2, Nodes::PREFIX_SIZE + 3, 11);
+
+    ASSERT_VALUE(Actions::search(root, key, Nodes::PREFIX_SIZE + 3), (Value)10);
+    ASSERT_VALUE(Actions::search(root, key2, Nodes::PREFIX_SIZE + 3),
+                 (Value)11);
+  }
+
+  { // common prefix + 1
+    Nodes::Header* root = Nodes::makeNewNode<Nodes::Type::NODE4>();
+
+    uint8_t key[Nodes::PREFIX_SIZE + 4]; // prefix + eq + eq + diff + 0
+    for (size_t i = 0; i < Nodes::PREFIX_SIZE + 3; ++i) {
+      key[i] = 1;
+    }
+    key[Nodes::PREFIX_SIZE + 3] = 0;
+    Actions::insert(&root, key, Nodes::PREFIX_SIZE + 4, 10);
+    ASSERT_VALUE(Actions::search(root, key, Nodes::PREFIX_SIZE + 4), (Value)10);
+
+    uint8_t key2[Nodes::PREFIX_SIZE + 4];
+    for (size_t i = 0; i < Nodes::PREFIX_SIZE + 2; ++i) {
+      key2[i] = 1;
+    }
+    key2[Nodes::PREFIX_SIZE + 2] = 2;
+    key2[Nodes::PREFIX_SIZE + 3] = 0;
+    Actions::insert(&root, key2, Nodes::PREFIX_SIZE + 4, 11);
+
+    ASSERT_VALUE(Actions::search(root, key, Nodes::PREFIX_SIZE + 4), (Value)10);
+    ASSERT_VALUE(Actions::search(root, key2, Nodes::PREFIX_SIZE + 4),
+                 (Value)11);
+  }
 }

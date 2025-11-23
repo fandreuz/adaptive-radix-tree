@@ -15,7 +15,7 @@ const Value* searchImpl(Nodes::Header* node_header_ptr, KEY /* key, key_len */,
     return nullptr;
 
   for (size_t i = 0; i < node_header_ptr->prefix_len; ++i) {
-    if (key[depth + i] == node_header_ptr->prefix[i])
+    if (key[depth + i] != node_header_ptr->prefix[i])
       return nullptr;
   }
   depth += node_header_ptr->prefix_len;

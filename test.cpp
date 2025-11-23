@@ -8,6 +8,10 @@
   assert(leaf->key_len == strlen(expected) + 1);                               \
   assert(memcmp(leaf->key, expected, leaf->key_len - 1) == 0);
 
+#define ASSERT_VALUE(out, expected)                                            \
+  assert(out != nullptr);                                                      \
+  assert(*out == expected);
+
 int main() {
   { // new node
     Nodes::Header* root = Nodes::makeNewNode<Nodes::Type::NODE4>();
@@ -157,6 +161,13 @@ int main() {
       ASSERT_KEY_EQ(leaf, "hello");
       assert(leaf->value == 12);
     }
+
+    ASSERT_VALUE(Actions::search(root, "hello"), 12);
+    ASSERT_VALUE(Actions::search(root, "ciao"), 13);
+    ASSERT_VALUE(Actions::search(root, "bonjour"), 14);
+    ASSERT_VALUE(Actions::search(root, "doberdan"), 15);
+    ASSERT_VALUE(Actions::search(root, "aufwiedersehen"), 16);
+    assert(Actions::search(root, "come xe") == nullptr);
   }
 
   { // root + node + node

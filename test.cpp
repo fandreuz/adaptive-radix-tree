@@ -230,39 +230,45 @@ int main() {
   { // grow to node 16
     Nodes::Header* root = Nodes::makeNewNode<Nodes::Type::NODE4>();
 
+    uint8_t key[2];
+    key[1] = 0;
     for (uint16_t i = 1; i <= 5; ++i) {
-      uint8_t v = (uint8_t)i;
-      Actions::insert(&root, &v, 1, 100 + v);
+      key[0] = i;
+      Actions::insert(&root, key, 2, 100 + i);
     }
     for (uint16_t i = 1; i <= 5; ++i) {
-      uint8_t v = (uint8_t)i;
-      ASSERT_VALUE(Actions::search(root, &v, 1), (Value)(100 + v));
+      key[0] = i;
+      ASSERT_VALUE(Actions::search(root, key, 2), (Value)(100 + i));
     }
   }
 
   { // grow to node 48
     Nodes::Header* root = Nodes::makeNewNode<Nodes::Type::NODE4>();
 
+    uint8_t key[2];
+    key[1] = 0;
     for (uint16_t i = 1; i <= 17; ++i) {
-      uint8_t v = (uint8_t)i;
-      Actions::insert(&root, &v, 1, 100 + v);
+      key[0] = i;
+      Actions::insert(&root, key, 2, 100 + i);
     }
     for (uint16_t i = 1; i <= 17; ++i) {
-      uint8_t v = (uint8_t)i;
-      ASSERT_VALUE(Actions::search(root, &v, 1), (Value)(100 + v));
+      key[0] = i;
+      ASSERT_VALUE(Actions::search(root, key, 2), (Value)(100 + i));
     }
   }
 
   { // grow to node 256
     Nodes::Header* root = Nodes::makeNewNode<Nodes::Type::NODE4>();
 
+    uint8_t key[2];
+    key[1] = 0;
     for (uint16_t i = 1; i <= 49; ++i) {
-      uint8_t v = (uint8_t)i;
-      Actions::insert(&root, &v, 1, 100 + v);
+      key[0] = i;
+      Actions::insert(&root, key, 2, 100 + i);
     }
     for (uint16_t i = 1; i <= 49; ++i) {
-      uint8_t v = (uint8_t)i;
-      ASSERT_VALUE(Actions::search(root, &v, 1), (Value)(100 + v));
+      key[0] = i;
+      ASSERT_VALUE(Actions::search(root, key, 2), (Value)(100 + i));
     }
   }
 }

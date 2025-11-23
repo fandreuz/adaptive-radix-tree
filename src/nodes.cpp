@@ -157,7 +157,8 @@ void addChild(Header* node_header, KEY /* key, key_len */, Value value,
     Node48* node = (Node48*)node_header->getNode();
     assert(node->child_index[(uint8_t)key[depth]] == Node48::EMPTY);
     node->child_index[(uint8_t)key[depth]] = node_header->children_count;
-    node->children[node_header->children_count] = smuggleLeaf(makeNewLeaf(key, key_len, value));
+    node->children[node_header->children_count] =
+        smuggleLeaf(makeNewLeaf(key, key_len, value));
   } else if (node_header->type == Type::NODE256) {
     Node256* node = (Node256*)node_header->getNode();
     assert(node->children[(uint8_t)key[depth]] == nullptr);

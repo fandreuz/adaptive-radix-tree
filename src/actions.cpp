@@ -22,7 +22,7 @@ const Value* searchImpl(Nodes::Header* node_header_ptr, KEY /* key, key_len */,
 
   if (Nodes::isLeaf(*next_src)) {
     auto leaf = Nodes::asLeaf(*next_src);
-    if (key_len == leaf->key_len && memcmp(leaf->key, key, key_len)) {
+    if (key_len == leaf->key_len && memcmp(leaf->key, key, key_len) == 0) {
       return &leaf->value;
     }
     return nullptr;

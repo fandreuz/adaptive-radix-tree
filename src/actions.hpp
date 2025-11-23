@@ -6,9 +6,9 @@
 
 namespace Actions {
 
-bool search(Nodes::Header* node_header, KEY);
+const Value* search(Nodes::Header* node_header, KEY);
 
-inline bool search(Nodes::Header* node_header, const char* key) {
+inline const Value* search(Nodes::Header* node_header, const char* key) {
   size_t len = strlen(key) + 1;
   return search(node_header, (const uint8_t*)key, len);
 }

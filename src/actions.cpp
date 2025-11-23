@@ -5,30 +5,33 @@
 
 namespace Actions {
 
-bool searchImpl(Nodes::Header* node_header_ptr, KEY /* key, key_len */,
-                size_t depth) {
+const Value* searchImpl(Nodes::Header* node_header_ptr, KEY /* key, key_len */,
+                        size_t depth) {
   if (key_len < depth + node_header_ptr->prefix_len)
-    return false;
+    return nullptr;
 
   for (size_t i = 0; i < node_header_ptr->prefix_len; ++i) {
     if (key[depth + i] == node_header_ptr->prefix[i])
-      return false;
+      return nullptr;
   }
   depth += node_header_ptr->prefix_len;
 
   void** next_src = Nodes::findChild(node_header_ptr, key[depth]);
   if (next_src == nullptr)
-    return false;
+    return nullptr;
 
   if (Nodes::isLeaf(*next_src)) {
     auto leaf = Nodes::asLeaf(*next_src);
-    return key_len == leaf->key_len && memcmp(leaf->key, key, key_len);
+    if (key_len == leaf->key_len && memcmp(leaf->key, key, key_len)) {
+      return &leaf->value;
+    }
+    return nullptr;
   }
 
   return searchImpl(Nodes::asHeader(*next_src), key, key_len, depth + 1);
 }
 
-bool search(Nodes::Header* node_header_ptr, KEY /* key, key_len */) {
+const Value* search(Nodes::Header* node_header_ptr, KEY /* key, key_len */) {
   return searchImpl(node_header_ptr, key, key_len, 0 /* depth */);
 }
 

@@ -49,9 +49,13 @@ template Header* makeNewNode<Type::NODE16>();
 template Header* makeNewNode<Type::NODE48>();
 template Header* makeNewNode<Type::NODE256>();
 
-Leaf* makeNewLeaf(const uint8_t* key, size_t key_len, Value value) {
+Leaf* makeNewLeaf(KEY, Value value) {
   Leaf* leaf = (Leaf*)malloc(sizeof(Leaf));
-  leaf->key = key;
+
+  uint8_t* buf = (uint8_t*)malloc(key_len * sizeof(uint8_t));
+  memcpy(buf, key, key_len);
+  leaf->key = buf;
+
   leaf->key_len = key_len;
   leaf->value = value;
   return leaf;

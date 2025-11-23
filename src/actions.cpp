@@ -5,14 +5,14 @@
 
 namespace Actions {
 
-bool search(Nodes::Header *node_header_ptr, Key key, size_t depth) {
+bool search(Nodes::Header* node_header_ptr, Key key, size_t depth) {
   for (size_t i = 0; i < node_header_ptr->prefix_len && i < key.length; ++i) {
     if (key[depth + i] == node_header_ptr->prefix[i])
       return false;
   }
   depth += node_header_ptr->prefix_len;
 
-  void **next_src = Nodes::findChild(node_header_ptr, key[depth]);
+  void** next_src = Nodes::findChild(node_header_ptr, key[depth]);
   if (next_src == nullptr)
     return false;
 
@@ -20,12 +20,12 @@ bool search(Nodes::Header *node_header_ptr, Key key, size_t depth) {
     return key == Nodes::asLeaf(*next_src)->key;
   }
 
-  return search((Nodes::Header *)*next_src, key, depth + 1);
+  return search((Nodes::Header*)*next_src, key, depth + 1);
 }
 
 void insert(
-    Nodes::Header *
-        *node_header_ptr /* pointer to the parent's pointer to the child */,
+    Nodes::Header**
+        node_header_ptr /* pointer to the parent's pointer to the child */,
     Key key, Value value, size_t depth) {
   assert(node_header_ptr != nullptr);
   assert(*node_header_ptr != nullptr);
@@ -42,11 +42,11 @@ void insert(
 
   // prefix differs, create a new common parent
   if (first_diff != (*node_header_ptr)->prefix_len) {
-    Nodes::Header *new_node_header = Nodes::makeNewNode<Nodes::Type::NODE4>();
-    Nodes::Node4 *new_node = (Nodes::Node4 *)new_node_header->getNode();
+    Nodes::Header* new_node_header = Nodes::makeNewNode<Nodes::Type::NODE4>();
+    Nodes::Node4* new_node = (Nodes::Node4*)new_node_header->getNode();
     new_node_header->prefix_len = first_diff;
     new_node_header->prefix =
-        (uint8_t *)malloc(first_diff * sizeof(uint8_t)); // TODO: arena
+        (uint8_t*)malloc(first_diff * sizeof(uint8_t)); // TODO: arena
     new_node_header->children_count = 2;
 
     memcpy(new_node_header->prefix, (*node_header_ptr)->prefix, first_diff);
@@ -54,7 +54,7 @@ void insert(
     memmove((*node_header_ptr)->prefix, (*node_header_ptr)->prefix + first_diff,
             (*node_header_ptr)->prefix_len);
 
-    Nodes::Leaf *new_leaf = Nodes::makeNewLeaf(key, value);
+    Nodes::Leaf* new_leaf = Nodes::makeNewLeaf(key, value);
     if (key[first_diff] < (*node_header_ptr)->prefix[first_diff]) {
       new_node->keys[0] = key[first_diff];
       new_node->children[0] = Nodes::smuggleLeaf(new_leaf);
@@ -73,7 +73,7 @@ void insert(
 
   // Pointer to the location in memory where the child was found. May be header,
   // may be leaf
-  void **next_src = Nodes::findChild(*node_header_ptr, key[depth]);
+  void** next_src = Nodes::findChild(*node_header_ptr, key[depth]);
   if (next_src == nullptr || *next_src == nullptr) {
     Nodes::maybeGrow(node_header_ptr);
     Nodes::addChild(*node_header_ptr, key, value, depth);
@@ -82,12 +82,12 @@ void insert(
 
   depth += 1;
   if (Nodes::isLeaf(*next_src)) {
-    Nodes::Leaf *leaf = Nodes::asLeaf(*next_src);
-    Nodes::Leaf *new_leaf = Nodes::makeNewLeaf(key, value);
+    Nodes::Leaf* leaf = Nodes::asLeaf(*next_src);
+    Nodes::Leaf* new_leaf = Nodes::makeNewLeaf(key, value);
 
     // The new parent of both leaf and the new value
-    Nodes::Header *new_node_header = Nodes::makeNewNode<Nodes::Type::NODE4>();
-    Nodes::Node4 *new_node = (Nodes::Node4 *)new_node_header->getNode();
+    Nodes::Header* new_node_header = Nodes::makeNewNode<Nodes::Type::NODE4>();
+    Nodes::Node4* new_node = (Nodes::Node4*)new_node_header->getNode();
 
     // What is the common key segment?
     size_t i = depth;
@@ -97,8 +97,8 @@ void insert(
     }
 
     new_node_header->prefix_len = i - depth;
-    new_node_header->prefix = (uint8_t *)malloc(new_node_header->prefix_len *
-                                                sizeof(uint8_t)); // TODO: arena
+    new_node_header->prefix = (uint8_t*)malloc(new_node_header->prefix_len *
+                                               sizeof(uint8_t)); // TODO: arena
     new_node_header->children_count = 2;
     memcpy(new_node_header->prefix, leaf->key.data + depth,
            new_node_header->prefix_len);
@@ -118,7 +118,7 @@ void insert(
     return;
   }
 
-  Nodes::Header **next_header_ptr = (Nodes::Header **)next_src;
+  Nodes::Header** next_header_ptr = (Nodes::Header**)next_src;
   insert(next_header_ptr, key, value, depth);
 }
 

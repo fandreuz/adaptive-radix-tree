@@ -3,6 +3,6 @@
 
 #include <cassert>
 
-#define ShouldNotReachHere assert(false);
+#define ShouldNotReachHere assert(false)
 
 #endif

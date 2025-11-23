@@ -20,7 +20,7 @@ void* Header::getNode() const {
     action(48);                                                                \
   if (nt == Type::NODE256)                                                     \
     action(256);                                                               \
-  ShouldNotReachHere
+  ShouldNotReachHere;
 
 constexpr size_t nodeSize(Type nt) {
 #define SIZEOF_ACTION(N) return sizeof(Node##N)
@@ -29,7 +29,8 @@ constexpr size_t nodeSize(Type nt) {
 }
 
 template <Type NT> Header* makeNewNode() {
-  Header* header = (Header*)malloc(sizeof(Header) + nodeSize(NT));
+  Header* header =
+      (Header*)malloc(sizeof(Header) + nodeSize(NT)); // TODO: arena
   header->type = NT;
   header->prefix_len = 0;
   header->prefix = nullptr;
@@ -113,7 +114,8 @@ void maybeGrow(Header** node_header) {
   } else {
     // Node256 can't and should not need to be grown, as it can
     // hold all key bits at once.
-    ShouldNotReachHere return;
+    ShouldNotReachHere;
+    return;
   }
 
   new_header->children_count = (*node_header)->children_count;
@@ -156,7 +158,7 @@ void addChild(Header* node_header, Key key, Value value, size_t depth) {
     assert(node->children[(uint8_t)key[depth]] == nullptr);
     node->children[(uint8_t)key[depth]] = smuggleLeaf(makeNewLeaf(key, value));
   } else {
-    ShouldNotReachHere
+    ShouldNotReachHere;
   }
 
   ++node_header->children_count;
@@ -191,7 +193,8 @@ void** findChild(Header* node_header, uint8_t key) {
     return &(node->children[key]);
   }
 
-  ShouldNotReachHere return nullptr;
+  ShouldNotReachHere;
+  return nullptr;
 }
 
 void printAndGo(char c, void* next, std::ostream& os, size_t depth) {
@@ -249,7 +252,7 @@ void print(Header* node_header, std::ostream& os, size_t depth) {
     return;
   }
 
-  ShouldNotReachHere
+  ShouldNotReachHere;
 }
 
 } // namespace Nodes

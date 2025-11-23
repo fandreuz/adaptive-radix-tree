@@ -6,12 +6,18 @@
 
 namespace Actions {
 
-bool search(Nodes::Header* node_header, KEY, size_t depth);
-void insert(Nodes::Header** node_header, KEY, Value value, size_t depth = 0);
-inline void insert(Nodes::Header** node_header, const char* key, Value value,
-                   size_t depth = 0) {
+bool search(Nodes::Header* node_header, KEY);
+
+inline bool search(Nodes::Header* node_header, const char* key) {
   size_t len = strlen(key) + 1;
-  insert(node_header, (const uint8_t*)key, len, value, depth);
+  return search(node_header, (const uint8_t*)key, len);
+}
+
+void insert(Nodes::Header** node_header, KEY, Value value);
+
+inline void insert(Nodes::Header** node_header, const char* key, Value value) {
+  size_t len = strlen(key) + 1;
+  insert(node_header, (const uint8_t*)key, len, value);
 }
 
 } // namespace Actions

@@ -5,8 +5,8 @@
 
 namespace Actions {
 
-bool search(Nodes::Header* node_header_ptr, KEY /* key, key_len */,
-            size_t depth) {
+bool searchImpl(Nodes::Header* node_header_ptr, KEY /* key, key_len */,
+                size_t depth) {
   if (key_len < depth + node_header_ptr->prefix_len)
     return false;
 
@@ -25,7 +25,11 @@ bool search(Nodes::Header* node_header_ptr, KEY /* key, key_len */,
     return key_len == leaf->key_len && memcmp(leaf->key, key, key_len);
   }
 
-  return search(Nodes::asHeader(*next_src), key, key_len, depth + 1);
+  return searchImpl(Nodes::asHeader(*next_src), key, key_len, depth + 1);
+}
+
+bool search(Nodes::Header* node_header_ptr, KEY /* key, key_len */) {
+  return searchImpl(node_header_ptr, key, key_len, 0 /* depth */);
 }
 
 void insertInOrder(Nodes::Node4* new_node, uint8_t k1, uint8_t k2, void* v1,
@@ -47,7 +51,7 @@ void insertInOrder(Nodes::Node4* new_node, uint8_t k1, uint8_t k2, void* v1,
   }
 }
 
-void insert(
+void insertImpl(
     Nodes::Header**
         node_header_ptr /* pointer to the parent's pointer to the child */,
     KEY /* key, key_len */, Value value, size_t depth) {
@@ -125,7 +129,14 @@ void insert(
   }
 
   Nodes::Header** next_header_ptr = (Nodes::Header**)next_src;
-  insert(next_header_ptr, key, key_len, value, depth);
+  insertImpl(next_header_ptr, key, key_len, value, depth);
+}
+
+void insert(
+    Nodes::Header**
+        node_header_ptr /* pointer to the parent's pointer to the child */,
+    KEY /* key, key_len */, Value value) {
+  insertImpl(node_header_ptr, key, key_len, value, 0 /* depth */);
 }
 
 } // namespace Actions

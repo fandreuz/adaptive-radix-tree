@@ -226,4 +226,43 @@ int main() {
       assert(leaf->value == 12);
     }
   }
+
+  { // grow to node 16
+    Nodes::Header* root = Nodes::makeNewNode<Nodes::Type::NODE4>();
+
+    for (uint16_t i = 1; i <= 5; ++i) {
+      uint8_t v = (uint8_t)i;
+      Actions::insert(&root, &v, 1, 100 + v);
+    }
+    for (uint16_t i = 1; i <= 5; ++i) {
+      uint8_t v = (uint8_t)i;
+      ASSERT_VALUE(Actions::search(root, &v, 1), (Value)(100 + v));
+    }
+  }
+
+  { // grow to node 48
+    Nodes::Header* root = Nodes::makeNewNode<Nodes::Type::NODE4>();
+
+    for (uint16_t i = 1; i <= 17; ++i) {
+      uint8_t v = (uint8_t)i;
+      Actions::insert(&root, &v, 1, 100 + v);
+    }
+    for (uint16_t i = 1; i <= 17; ++i) {
+      uint8_t v = (uint8_t)i;
+      ASSERT_VALUE(Actions::search(root, &v, 1), (Value)(100 + v));
+    }
+  }
+
+  { // grow to node 256
+    Nodes::Header* root = Nodes::makeNewNode<Nodes::Type::NODE4>();
+
+    for (uint16_t i = 1; i <= 49; ++i) {
+      uint8_t v = (uint8_t)i;
+      Actions::insert(&root, &v, 1, 100 + v);
+    }
+    for (uint16_t i = 1; i <= 49; ++i) {
+      uint8_t v = (uint8_t)i;
+      ASSERT_VALUE(Actions::search(root, &v, 1), (Value)(100 + v));
+    }
+  }
 }

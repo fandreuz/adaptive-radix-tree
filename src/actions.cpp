@@ -7,6 +7,10 @@ namespace Actions {
 
 const Value* searchImpl(Nodes::Header* node_header_ptr, KEY /* key, key_len */,
                         size_t depth) {
+  assert(node_header_ptr != nullptr);
+  assert(!Nodes::isLeaf(node_header_ptr));
+  assert(depth < key_len);
+
   if (key_len < depth + node_header_ptr->prefix_len)
     return nullptr;
 
@@ -19,6 +23,7 @@ const Value* searchImpl(Nodes::Header* node_header_ptr, KEY /* key, key_len */,
   void** next_src = Nodes::findChild(node_header_ptr, key[depth]);
   if (next_src == nullptr)
     return nullptr;
+  assert(*next_src != nullptr);
 
   if (Nodes::isLeaf(*next_src)) {
     auto leaf = Nodes::asLeaf(*next_src);

@@ -196,6 +196,8 @@ void** findChild(Header* node_header, uint8_t key) {
     return &(node->children[child_index]);
   } else if (node_header->type == Type::NODE256) {
     auto node = (Node256*)node_header->getNode();
+    if (node->children[key] == nullptr)
+      return nullptr;
     return &(node->children[key]);
   }
 

@@ -174,7 +174,7 @@ void addChild(Header* node_header, KEY /* key, key_len */, Value value,
 // TODO: Improve
 void** findChildSmallNode(uint8_t* keys, void** children, uint8_t key,
                           uint8_t count) {
-  for (int i = 0; i < count; ++i) {
+  for (uint8_t i = 0; i < count; ++i) {
     if (keys[i] == key) {
       return &(children[i]);
     }

@@ -22,17 +22,17 @@ const Value* searchImpl(Nodes::Header* node_header_ptr, KEY /* key, key_len */,
 
   if (Nodes::isLeaf(*next_src)) {
     auto leaf = Nodes::asLeaf(*next_src);
-    if (key_len == leaf->key_len && memcmp(leaf->key, key, key_len) == 0) {
+    if (key_len == leaf->key_len && memcmp(leaf->key, KARGS) == 0) {
       return &leaf->value;
     }
     return nullptr;
   }
 
-  return searchImpl(Nodes::asHeader(*next_src), key, key_len, depth + 1);
+  return searchImpl(Nodes::asHeader(*next_src), KARGS, depth + 1);
 }
 
 const Value* search(Nodes::Header* node_header_ptr, KEY /* key, key_len */) {
-  return searchImpl(node_header_ptr, key, key_len, 0 /* depth */);
+  return searchImpl(node_header_ptr, KARGS, 0 /* depth */);
 }
 
 void insertInOrder(Nodes::Node4* new_node, uint8_t k1, uint8_t k2, void* v1,
@@ -98,7 +98,7 @@ void insertImpl(
   void** next_src = Nodes::findChild(*node_header_ptr, key[depth]);
   if (next_src == nullptr || *next_src == nullptr) {
     Nodes::maybeGrow(node_header_ptr);
-    Nodes::addChild(*node_header_ptr, key, key_len, value, depth);
+    Nodes::addChild(*node_header_ptr, KARGS, value, depth);
     return;
   }
 
@@ -132,14 +132,14 @@ void insertImpl(
   }
 
   Nodes::Header** next_header_ptr = (Nodes::Header**)next_src;
-  insertImpl(next_header_ptr, key, key_len, value, depth);
+  insertImpl(next_header_ptr, KARGS, value, depth);
 }
 
 void insert(
     Nodes::Header**
         node_header_ptr /* pointer to the parent's pointer to the child */,
     KEY /* key, key_len */, Value value) {
-  insertImpl(node_header_ptr, key, key_len, value, 0 /* depth */);
+  insertImpl(node_header_ptr, KARGS, value, 0 /* depth */);
 }
 
 } // namespace Actions

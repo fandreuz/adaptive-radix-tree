@@ -145,12 +145,10 @@ void addChild(Header* node_header, KEY /* key, key_len */, Value value,
 
   if (node_header->type == Type::NODE4) {
     Node4* node = (Node4*)node_header->getNode();
-    addChildSmallNode(node->keys, node->children, 4, key, key_len, value,
-                      depth);
+    addChildSmallNode(node->keys, node->children, 4, KARGS, value, depth);
   } else if (node_header->type == Type::NODE16) {
     Node16* node = (Node16*)node_header->getNode();
-    addChildSmallNode(node->keys, node->children, 16, key, key_len, value,
-                      depth);
+    addChildSmallNode(node->keys, node->children, 16, KARGS, value, depth);
   } else if (node_header->type == Type::NODE48) {
     Node48* node = (Node48*)node_header->getNode();
     uint8_t child_index = node->child_index[(uint8_t)key[depth]];

@@ -7,6 +7,7 @@
 #include <iostream>
 
 #define KEY const uint8_t *key, size_t key_len
+#define KARGS key, key_len
 typedef uint64_t Value;
 
 namespace Nodes {

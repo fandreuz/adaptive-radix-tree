@@ -25,7 +25,7 @@ bool search(Nodes::Header* node_header_ptr, KEY /* key, key_len */,
     return key_len == leaf->key_len && memcmp(leaf->key, key, key_len);
   }
 
-  return search((Nodes::Header*)*next_src, key, key_len, depth + 1);
+  return search(Nodes::asHeader(*next_src), key, key_len, depth + 1);
 }
 
 void insertInOrder(Nodes::Node4* new_node, uint8_t k1, uint8_t k2, void* v1,

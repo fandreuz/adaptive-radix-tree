@@ -64,6 +64,11 @@ void print(Header* node_header, std::ostream& os, size_t depth = 0);
 
 inline bool isLeaf(void* ptr) { return (((uintptr_t)ptr) & 1) == 1; }
 
+inline Header* asHeader(void* ptr) {
+  assert(!isLeaf(ptr));
+  return (Nodes::Header*)ptr;
+}
+
 inline Leaf* asLeaf(void* ptr) {
   assert(isLeaf(ptr));
   return (Leaf*)((uintptr_t)ptr - 1);

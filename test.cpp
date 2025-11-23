@@ -175,7 +175,7 @@ int main() {
     auto root_node = (Nodes::Node4*)root->getNode();
     assert(root_node->keys[0] == 'h');
     assert(!Nodes::isLeaf(root_node->children[0]));
-    auto header = (Nodes::Header*)root_node->children[0];
+    auto header = Nodes::asHeader(root_node->children[0]);
     assert(header->children_count == 2);
     assert(header->prefix_len == 3);
     assert(std::string((char*)header->prefix, 3) == "ell");
@@ -212,7 +212,7 @@ int main() {
     auto root_node = (Nodes::Node4*)root->getNode();
     assert(root_node->keys[0] == 'h');
     assert(!Nodes::isLeaf(root_node->children[0]));
-    auto header = (Nodes::Header*)root_node->children[0];
+    auto header = Nodes::asHeader(root_node->children[0]);
     assert(header->children_count == 2);
     assert(header->prefix_len == 3);
     assert(std::string((char*)header->prefix, 3) == "ell");

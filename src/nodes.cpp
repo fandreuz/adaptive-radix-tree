@@ -155,9 +155,9 @@ void addChild(Header* node_header, KEY /* key, key_len */, Value value,
     addChildSmallNode(node->keys, node->children, 16, KARGS, value, depth);
   } else if (node_header->type == Type::NODE48) {
     Node48* node = (Node48*)node_header->getNode();
-    uint8_t child_index = node->child_index[(uint8_t)key[depth]];
-    assert(child_index == Node48::EMPTY);
-    node->children[child_index] = smuggleLeaf(makeNewLeaf(key, key_len, value));
+    assert(node->child_index[(uint8_t)key[depth]] == Node48::EMPTY);
+    node->child_index[(uint8_t)key[depth]] = node_header->children_count;
+    node->children[node_header->children_count] = smuggleLeaf(makeNewLeaf(key, key_len, value));
   } else if (node_header->type == Type::NODE256) {
     Node256* node = (Node256*)node_header->getNode();
     assert(node->children[(uint8_t)key[depth]] == nullptr);

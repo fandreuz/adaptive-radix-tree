@@ -6,7 +6,10 @@
 namespace Actions {
 
 bool search(Nodes::Header* node_header_ptr, Key key, size_t depth) {
-  for (size_t i = 0; i < node_header_ptr->prefix_len && i < key.length; ++i) {
+  if (key.length < depth + node_header_ptr->prefix_len)
+    return false;
+
+  for (size_t i = 0; i < node_header_ptr->prefix_len; ++i) {
     if (key[depth + i] == node_header_ptr->prefix[i])
       return false;
   }

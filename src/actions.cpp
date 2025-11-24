@@ -3,45 +3,50 @@
 #include <cassert>
 #include <cstring>
 
-size_t min(size_t a, size_t b) {
-  return a < b ? a : b;
-}
+size_t min(size_t a, size_t b) { return a < b ? a : b; }
 
 namespace Actions {
 
 const Value* searchImpl(Nodes::Header* node_header_ptr, KEY /* key, key_len */,
-                        size_t depth) {
+                        size_t depth, bool needs_full_key_check) {
   assert(node_header_ptr != nullptr);
   assert(!Nodes::isLeaf(node_header_ptr));
   assert(depth < key_len);
 
-  if (key_len < depth + node_header_ptr->prefix_len)
+  if (key_len < depth + node_header_ptr->prefix_len + 1)
     return nullptr;
 
-  for (size_t i = 0; i < node_header_ptr->prefix_len; ++i) {
+  size_t stop = min(Nodes::PREFIX_SIZE, node_header_ptr->prefix_len);
+  for (size_t i = 0; i < stop; ++i) {
     if (key[depth + i] != node_header_ptr->prefix[i])
       return nullptr;
   }
+  // did we skip something? then we need a full cmp later
+  needs_full_key_check |= node_header_ptr->prefix_len > stop;
   depth += node_header_ptr->prefix_len;
 
   void** next_src = Nodes::findChild(node_header_ptr, key[depth]);
   if (next_src == nullptr)
     return nullptr;
   assert(*next_src != nullptr);
+  ++depth;
 
   if (Nodes::isLeaf(*next_src)) {
     auto leaf = Nodes::asLeaf(*next_src);
-    if (key_len == leaf->key_len && memcmp(leaf->key, KARGS) == 0) {
+    if (key_len == leaf->key_len &&
+        (!needs_full_key_check || memcmp(leaf->key, KARGS) == 0)) {
       return &leaf->value;
     }
     return nullptr;
   }
 
-  return searchImpl(Nodes::asHeader(*next_src), KARGS, depth + 1);
+  auto next_header = Nodes::asHeader(*next_src);
+  return searchImpl(next_header, KARGS, depth, needs_full_key_check);
 }
 
 const Value* search(Nodes::Header* node_header_ptr, KEY /* key, key_len */) {
-  return searchImpl(node_header_ptr, KARGS, 0 /* depth */);
+  return searchImpl(node_header_ptr, KARGS, 0 /* depth */,
+                    false /* needs_full_key_check */);
 }
 
 void insertInOrder(Nodes::Node4* new_node, uint8_t k1, uint8_t k2, void* v1,
@@ -72,7 +77,8 @@ void insertImpl(
   assert(!Nodes::isLeaf(*node_header_ptr));
   assert(depth < key_len);
 
-  size_t stop = min(min((*node_header_ptr)->prefix_len, key_len), Nodes::PREFIX_SIZE);
+  size_t stop =
+      min(min((*node_header_ptr)->prefix_len, key_len), Nodes::PREFIX_SIZE);
   size_t i;
   for (i = 0; i < stop && key[depth + i] == (*node_header_ptr)->prefix[i]; ++i)
     ;

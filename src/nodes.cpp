@@ -61,7 +61,7 @@ Leaf* makeNewLeaf(KEY, Value value) {
   return leaf;
 }
 
-bool isFull(Header* node_header) {
+bool isFull(const Header* node_header) {
 #define ISFULL_ACTION(N) return node_header->children_count == N
   DISPATCH_CHILDREN_COUNT(ISFULL_ACTION, node_header->type)
   return false;
@@ -175,7 +175,7 @@ void addChild(Header* node_header, KEY /* key, key_len */, Value value,
 }
 
 // TODO: Improve
-void** findChildSmallNode(uint8_t* keys, void** children, uint8_t key,
+void** findChildSmallNode(const uint8_t* keys, void** children, uint8_t key,
                           uint8_t count) {
   for (uint8_t i = 0; i < count; ++i) {
     if (keys[i] == key) {
@@ -185,7 +185,7 @@ void** findChildSmallNode(uint8_t* keys, void** children, uint8_t key,
   return nullptr;
 }
 
-void** findChild(Header* node_header, uint8_t key) {
+void** findChild(const Header* node_header, uint8_t key) {
   if (node_header->type == Type::NODE4) {
     auto node = (Node4*)node_header->getNode();
     return findChildSmallNode(node->keys, node->children, key,

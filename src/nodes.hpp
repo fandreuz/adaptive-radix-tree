@@ -60,22 +60,21 @@ constexpr size_t nodeSize(Type nt);
 void maybeGrow(Header** node_header);
 
 void addChild(Header* node_header, KEY, Value value, size_t depth);
-void** findChild(Nodes::Header* node_header, uint8_t key);
-void print(Header* node_header, std::ostream& os, size_t depth = 0);
+void** findChild(const Nodes::Header* node_header, uint8_t key);
 
-inline bool isLeaf(void* ptr) { return (((uintptr_t)ptr) & 1) == 1; }
+inline bool isLeaf(const void* ptr) { return (((uintptr_t)ptr) & 1) == 1; }
 
-inline Header* asHeader(void* ptr) {
+inline Header* asHeader(const void* ptr) {
   assert(!isLeaf(ptr));
   return (Nodes::Header*)ptr;
 }
 
-inline Leaf* asLeaf(void* ptr) {
+inline Leaf* asLeaf(const void* ptr) {
   assert(isLeaf(ptr));
   return (Leaf*)((uintptr_t)ptr - 1);
 }
 
-inline void* smuggleLeaf(Leaf* leaf) {
+inline void* smuggleLeaf(const Leaf* leaf) {
   assert((((uintptr_t)leaf) & 1) == 0); // should be at least 2-aligned
   return (void*)(((uintptr_t)leaf) + 1);
 }

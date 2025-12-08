@@ -6,6 +6,8 @@
 
 namespace Actions {
 
+void findMinimumKey(const void* node, const uint8_t*& out_key, size_t& out_len);
+
 const Value* search(Nodes::Header* node_header, KEY);
 
 inline const Value* search(Nodes::Header* node_header, const char* key) {

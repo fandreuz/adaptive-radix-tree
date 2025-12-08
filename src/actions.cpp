@@ -7,41 +7,46 @@ namespace Actions {
 
 void findMinimumKey(const void* node, const uint8_t*& out_key,
                     size_t& out_len) {
-  if (Nodes::isLeaf(node)) {
-    auto leaf = Nodes::asLeaf(node);
-    out_key = leaf->key;
-    out_len = leaf->key_len;
-    return;
-  }
+  while (true) {
+    if (Nodes::isLeaf(node)) {
+      auto leaf = Nodes::asLeaf(node);
+      out_key = leaf->key;
+      out_len = leaf->key_len;
+      return;
+    }
 
-  auto header = Nodes::asHeader(node);
-  if (header->type == Nodes::Type::NODE4) {
-    auto next = (Nodes::Node4*)header->getNode();
-    return findMinimumKey(next->children[0], out_key, out_len);
-  }
-  if (header->type == Nodes::Type::NODE16) {
-    auto next = (Nodes::Node16*)header->getNode();
-    return findMinimumKey(next->children[0], out_key, out_len);
-  }
-  if (header->type == Nodes::Type::NODE48) {
-    auto next = (Nodes::Node48*)header->getNode();
-    for (uint8_t i = 0; i < 48; ++i) {
-      if (next->children[i] != nullptr) {
-        findMinimumKey(next->children[i], out_key, out_len);
-        return;
+    auto header = Nodes::asHeader(node);
+    if (header->type == Nodes::Type::NODE4) {
+      auto next = (Nodes::Node4*)header->getNode();
+      node = next->children[0];
+      continue;
+    }
+    if (header->type == Nodes::Type::NODE16) {
+      auto next = (Nodes::Node16*)header->getNode();
+      node = next->children[0];
+      continue;
+    }
+    if (header->type == Nodes::Type::NODE48) {
+      auto next = (Nodes::Node48*)header->getNode();
+      for (uint8_t i = 0; i < 48; ++i) {
+        if (next->children[i] != nullptr) {
+          node = next->children[i];
+          break;
+        }
       }
+      continue;
+    }
+    if (header->type == Nodes::Type::NODE256) {
+      auto next = (Nodes::Node256*)header->getNode();
+      for (uint8_t i = 0; i < 256; ++i) {
+        if (next->children[i] != nullptr) {
+          node = next->children[i];
+          break;
+        }
+      }
+      continue;
     }
   }
-  if (header->type == Nodes::Type::NODE256) {
-    auto next = (Nodes::Node256*)header->getNode();
-    for (uint8_t i = 0; i < 256; ++i) {
-      if (next->children[i] != nullptr) {
-        findMinimumKey(next->children[i], out_key, out_len);
-        return;
-      }
-    }
-  }
-  ShouldNotReachHere;
 }
 
 bool prefixMatches(const Nodes::Header* node_header, KEY, size_t depth,
@@ -88,40 +93,41 @@ bool prefixMatches(const Nodes::Header* node_header, KEY, size_t depth,
 }
 
 const Value* searchImpl(Nodes::Header* node_header_ptr, KEY, size_t depth) {
-  assert(node_header_ptr != nullptr);
-  assert(!Nodes::isLeaf(node_header_ptr));
-  assert(depth < key_len);
+  while (true) {
+    assert(node_header_ptr != nullptr);
+    assert(!Nodes::isLeaf(node_header_ptr));
+    assert(depth < key_len);
 
-  if (key_len < depth + node_header_ptr->prefix_len + 1)
-    return nullptr;
-
-  size_t first_diff;
-  const uint8_t* min_key;
-  size_t min_key_len;
-
-  {
-    bool match = prefixMatches(node_header_ptr, key, key_len, depth, first_diff,
-                               min_key, min_key_len);
-    if (!match)
+    if (key_len < depth + node_header_ptr->prefix_len + 1)
       return nullptr;
+
+    size_t first_diff;
+    const uint8_t* min_key;
+    size_t min_key_len;
+
+    {
+      bool match = prefixMatches(node_header_ptr, key, key_len, depth,
+                                 first_diff, min_key, min_key_len);
+      if (!match)
+        return nullptr;
+    }
+
+    depth += node_header_ptr->prefix_len;
+
+    void** next_src = Nodes::findChild(node_header_ptr, key[depth]);
+    if (next_src == nullptr)
+      return nullptr;
+    assert(*next_src != nullptr);
+    ++depth;
+
+    if (Nodes::isLeaf(*next_src)) {
+      auto leaf = Nodes::asLeaf(*next_src);
+      bool match = key_len == leaf->key_len && memcmp(leaf->key, KARGS) == 0;
+      return match ? &leaf->value : nullptr;
+    }
+
+    node_header_ptr = Nodes::asHeader(*next_src);
   }
-
-  depth += node_header_ptr->prefix_len;
-
-  void** next_src = Nodes::findChild(node_header_ptr, key[depth]);
-  if (next_src == nullptr)
-    return nullptr;
-  assert(*next_src != nullptr);
-  ++depth;
-
-  if (Nodes::isLeaf(*next_src)) {
-    auto leaf = Nodes::asLeaf(*next_src);
-    bool match = key_len == leaf->key_len && memcmp(leaf->key, KARGS) == 0;
-    return match ? &leaf->value : nullptr;
-  }
-
-  auto next_header = Nodes::asHeader(*next_src);
-  return searchImpl(next_header, KARGS, depth);
 }
 
 const Value* search(Nodes::Header* node_header_ptr, KEY) {
@@ -218,7 +224,8 @@ void insertImpl(Nodes::Header** node_header_ptr, KEY, Value value,
 
     // What is the common key segment?
     size_t i = depth;
-    while (i < key_len && i < leaf->key_len && key[i] == leaf->key[i]) {
+    const size_t stop = min(key_len, leaf->key_len);
+    while (i < stop && key[i] == leaf->key[i]) {
       ++i;
     }
     assert(i != key_len || i != leaf->key_len); // TODO: support key update

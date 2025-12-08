@@ -353,4 +353,31 @@ int main() {
     ASSERT_VALUE(Actions::search(root, key2, Nodes::PREFIX_SIZE + 5), 11);
     ASSERT_VALUE(Actions::search(root, key3, Nodes::PREFIX_SIZE + 4), 12);
   }
+
+  { // test min key
+    Nodes::Header* root = Nodes::makeNewNode<Nodes::Type::NODE4>();
+
+    uint8_t key[3];
+    key[0] = 1;
+    key[1] = 2;
+    key[2] = 0;
+    Actions::insert(&root, key, 3, 12);
+
+    const uint8_t* out;
+    size_t out_len;
+    Actions::findMinimumKey(root, out, out_len);
+    assert(out_len == 3);
+    assert(memcmp(key, out, 3) == 0);
+
+    uint8_t key2[4];
+    key2[0] = 1;
+    key2[1] = 1;
+    key2[2] = 2;
+    key2[3] = 0;
+    Actions::insert(&root, key2, 4, 13);
+
+    Actions::findMinimumKey(root, out, out_len);
+    assert(out_len == 4);
+    assert(memcmp(key2, out, 4) == 0);
+  }
 }

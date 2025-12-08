@@ -156,96 +156,97 @@ void insertInOrder(Nodes::Node4* new_node, uint8_t k1, uint8_t k2, void* v1,
 
 void insertImpl(Nodes::Header** node_header_ptr, KEY, Value value,
                 size_t depth) {
-  assert(node_header_ptr != nullptr);
-  assert(*node_header_ptr != nullptr);
-  assert(!Nodes::isLeaf(*node_header_ptr));
-  assert(depth < key_len);
+  while (true) {
+    assert(node_header_ptr != nullptr);
+    assert(*node_header_ptr != nullptr);
+    assert(!Nodes::isLeaf(*node_header_ptr));
+    assert(depth < key_len);
 
-  size_t first_diff;
-  const uint8_t* min_key;
-  size_t min_key_len;
-  bool prefix_matches = prefixMatches(*node_header_ptr, key, key_len, depth,
-                                      first_diff, min_key, min_key_len);
+    size_t first_diff;
+    const uint8_t* min_key;
+    size_t min_key_len;
+    bool prefix_matches = prefixMatches(*node_header_ptr, key, key_len, depth,
+                                        first_diff, min_key, min_key_len);
 
-  if (!prefix_matches) {
-    Nodes::Header* new_node_header = Nodes::makeNewNode<Nodes::Type::NODE4>();
-    Nodes::Node4* new_node = (Nodes::Node4*)new_node_header->getNode();
+    if (!prefix_matches) {
+      Nodes::Header* new_node_header = Nodes::makeNewNode<Nodes::Type::NODE4>();
+      Nodes::Node4* new_node = (Nodes::Node4*)new_node_header->getNode();
 
-    // handle new prefix: it will contain a prefix of the old prefix, the common
-    // section with the new key
-    new_node_header->prefix_len = first_diff;
-    size_t actual_prefix_len =
-        Nodes::cap_prefix_size(new_node_header->prefix_len);
-    new_node_header->prefix = (uint8_t*)malloc(actual_prefix_len);
-    memcpy(new_node_header->prefix, (*node_header_ptr)->prefix,
-           actual_prefix_len);
+      // handle new prefix: it will contain a prefix of the old prefix, the
+      // common section with the new key
+      new_node_header->prefix_len = first_diff;
+      size_t actual_prefix_len =
+          Nodes::cap_prefix_size(new_node_header->prefix_len);
+      new_node_header->prefix = (uint8_t*)malloc(actual_prefix_len);
+      memcpy(new_node_header->prefix, (*node_header_ptr)->prefix,
+             actual_prefix_len);
 
-    // shorten old prefix: it'll be a suffix of the old prefix.
-    // +1 because an element of the prefix (the first diff) will
-    // be part of the new parent.
-    (*node_header_ptr)->prefix_len -= (1 + new_node_header->prefix_len);
-    uint8_t diff_bit;
-    if (min_key != nullptr) {
-      diff_bit = min_key[depth + first_diff];
-      memcpy((*node_header_ptr)->prefix, min_key + depth + first_diff + 1,
-             Nodes::cap_prefix_size((*node_header_ptr)->prefix_len));
-    } else {
-      diff_bit = (*node_header_ptr)->prefix[first_diff];
-      memmove((*node_header_ptr)->prefix,
-              (*node_header_ptr)->prefix + first_diff + 1,
-              Nodes::cap_prefix_size((*node_header_ptr)->prefix_len));
+      // shorten old prefix: it'll be a suffix of the old prefix.
+      // +1 because an element of the prefix (the first diff) will
+      // be part of the new parent.
+      (*node_header_ptr)->prefix_len -= (1 + new_node_header->prefix_len);
+      uint8_t diff_bit;
+      if (min_key != nullptr) {
+        diff_bit = min_key[depth + first_diff];
+        memcpy((*node_header_ptr)->prefix, min_key + depth + first_diff + 1,
+               Nodes::cap_prefix_size((*node_header_ptr)->prefix_len));
+      } else {
+        diff_bit = (*node_header_ptr)->prefix[first_diff];
+        memmove((*node_header_ptr)->prefix,
+                (*node_header_ptr)->prefix + first_diff + 1,
+                Nodes::cap_prefix_size((*node_header_ptr)->prefix_len));
+      }
+
+      Nodes::Leaf* new_leaf = Nodes::makeNewLeaf(key, key_len, value);
+      insertInOrder(new_node, key[first_diff + depth], diff_bit,
+                    Nodes::smuggleLeaf(new_leaf), *node_header_ptr);
+      new_node_header->children_count = 2;
+      *node_header_ptr = new_node_header;
+      return;
     }
 
-    Nodes::Leaf* new_leaf = Nodes::makeNewLeaf(key, key_len, value);
-    insertInOrder(new_node, key[first_diff + depth], diff_bit,
-                  Nodes::smuggleLeaf(new_leaf), *node_header_ptr);
-    new_node_header->children_count = 2;
-    *node_header_ptr = new_node_header;
-    return;
-  }
+    depth += (*node_header_ptr)->prefix_len;
 
-  depth += (*node_header_ptr)->prefix_len;
-
-  void** next_src = Nodes::findChild(*node_header_ptr, key[depth]);
-  if (next_src == nullptr || *next_src == nullptr) {
-    Nodes::maybeGrow(node_header_ptr);
-    Nodes::addChild(*node_header_ptr, KARGS, value, depth);
-    return;
-  }
-
-  depth += 1;
-  if (Nodes::isLeaf(*next_src)) {
-    Nodes::Leaf* leaf = Nodes::asLeaf(*next_src);
-    Nodes::Leaf* new_leaf = Nodes::makeNewLeaf(key, key_len, value);
-
-    // The new parent of both leaf and the new value
-    Nodes::Header* new_node_header = Nodes::makeNewNode<Nodes::Type::NODE4>();
-    Nodes::Node4* new_node = (Nodes::Node4*)new_node_header->getNode();
-
-    // What is the common key segment?
-    size_t i = depth;
-    const size_t stop = min(key_len, leaf->key_len);
-    while (i < stop && key[i] == leaf->key[i]) {
-      ++i;
+    void** next_src = Nodes::findChild(*node_header_ptr, key[depth]);
+    if (next_src == nullptr || *next_src == nullptr) {
+      Nodes::maybeGrow(node_header_ptr);
+      Nodes::addChild(*node_header_ptr, KARGS, value, depth);
+      return;
     }
-    assert(i != key_len || i != leaf->key_len); // TODO: support key update
 
-    new_node_header->prefix_len = i - depth;
-    size_t actual_prefix_size =
-        Nodes::cap_prefix_size(new_node_header->prefix_len);
-    new_node_header->prefix = (uint8_t*)malloc(actual_prefix_size);
-    memcpy(new_node_header->prefix, leaf->key + depth, actual_prefix_size);
+    depth += 1;
+    if (Nodes::isLeaf(*next_src)) {
+      Nodes::Leaf* leaf = Nodes::asLeaf(*next_src);
+      Nodes::Leaf* new_leaf = Nodes::makeNewLeaf(key, key_len, value);
 
-    new_node_header->children_count = 2;
+      // The new parent of both leaf and the new value
+      Nodes::Header* new_node_header = Nodes::makeNewNode<Nodes::Type::NODE4>();
+      Nodes::Node4* new_node = (Nodes::Node4*)new_node_header->getNode();
 
-    insertInOrder(new_node, key[i], leaf->key[i], Nodes::smuggleLeaf(new_leaf),
-                  Nodes::smuggleLeaf(leaf));
-    *next_src = new_node_header;
-    return;
+      // What is the common key segment?
+      size_t i = depth;
+      const size_t stop = min(key_len, leaf->key_len);
+      while (i < stop && key[i] == leaf->key[i]) {
+        ++i;
+      }
+      assert(i != key_len || i != leaf->key_len); // TODO: support key update
+
+      new_node_header->prefix_len = i - depth;
+      size_t actual_prefix_size =
+          Nodes::cap_prefix_size(new_node_header->prefix_len);
+      new_node_header->prefix = (uint8_t*)malloc(actual_prefix_size);
+      memcpy(new_node_header->prefix, leaf->key + depth, actual_prefix_size);
+
+      new_node_header->children_count = 2;
+
+      insertInOrder(new_node, key[i], leaf->key[i],
+                    Nodes::smuggleLeaf(new_leaf), Nodes::smuggleLeaf(leaf));
+      *next_src = new_node_header;
+      return;
+    }
+
+    node_header_ptr = (Nodes::Header**)next_src;
   }
-
-  Nodes::Header** next_header_ptr = (Nodes::Header**)next_src;
-  insertImpl(next_header_ptr, KARGS, value, depth);
 }
 
 void insert(

@@ -1,6 +1,7 @@
 #ifndef NODES
 #define NODES
 
+#include "utils.hpp"
 #include <cassert>
 #include <cstdint>
 #include <cstring>
@@ -8,11 +9,15 @@
 
 #define KEY const uint8_t *key, size_t key_len
 #define KARGS key, key_len
-typedef uint64_t Value;
+typedef long Value;
 
 namespace Nodes {
 
 const size_t PREFIX_SIZE = 8;
+
+inline size_t cap_prefix_size(size_t prefix_size) {
+  return min(prefix_size, PREFIX_SIZE);
+}
 
 enum class Type : uint8_t { NODE4, NODE16, NODE48, NODE256 };
 

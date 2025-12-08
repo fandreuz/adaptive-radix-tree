@@ -238,7 +238,7 @@ int main() {
     }
     for (uint16_t i = 1; i <= 5; ++i) {
       key[0] = i;
-      ASSERT_VALUE(Actions::search(root, key, 2), (Value)(100 + i));
+      ASSERT_VALUE(Actions::search(root, key, 2), (100 + i));
     }
   }
 
@@ -253,7 +253,7 @@ int main() {
     }
     for (uint16_t i = 1; i <= 17; ++i) {
       key[0] = i;
-      ASSERT_VALUE(Actions::search(root, key, 2), (Value)(100 + i));
+      ASSERT_VALUE(Actions::search(root, key, 2), (100 + i));
     }
   }
 
@@ -268,7 +268,7 @@ int main() {
     }
     for (uint16_t i = 1; i <= 49; ++i) {
       key[0] = i;
-      ASSERT_VALUE(Actions::search(root, key, 2), (Value)(100 + i));
+      ASSERT_VALUE(Actions::search(root, key, 2), (100 + i));
     }
   }
 
@@ -281,7 +281,7 @@ int main() {
     }
     key[Nodes::PREFIX_SIZE + 2] = 0;
     Actions::insert(&root, key, Nodes::PREFIX_SIZE + 3, 10);
-    ASSERT_VALUE(Actions::search(root, key, Nodes::PREFIX_SIZE + 3), (Value)10);
+    ASSERT_VALUE(Actions::search(root, key, Nodes::PREFIX_SIZE + 3), 10);
 
     uint8_t key2[Nodes::PREFIX_SIZE + 3];
     for (size_t i = 0; i < Nodes::PREFIX_SIZE + 1; ++i) {
@@ -291,9 +291,8 @@ int main() {
     key2[Nodes::PREFIX_SIZE + 2] = 0;
     Actions::insert(&root, key2, Nodes::PREFIX_SIZE + 3, 11);
 
-    ASSERT_VALUE(Actions::search(root, key, Nodes::PREFIX_SIZE + 3), (Value)10);
-    ASSERT_VALUE(Actions::search(root, key2, Nodes::PREFIX_SIZE + 3),
-                 (Value)11);
+    ASSERT_VALUE(Actions::search(root, key, Nodes::PREFIX_SIZE + 3), 10);
+    ASSERT_VALUE(Actions::search(root, key2, Nodes::PREFIX_SIZE + 3), 11);
   }
 
   { // common prefix + 1
@@ -305,7 +304,7 @@ int main() {
     }
     key[Nodes::PREFIX_SIZE + 3] = 0;
     Actions::insert(&root, key, Nodes::PREFIX_SIZE + 4, 10);
-    ASSERT_VALUE(Actions::search(root, key, Nodes::PREFIX_SIZE + 4), (Value)10);
+    ASSERT_VALUE(Actions::search(root, key, Nodes::PREFIX_SIZE + 4), 10);
 
     uint8_t key2[Nodes::PREFIX_SIZE + 4];
     for (size_t i = 0; i < Nodes::PREFIX_SIZE + 2; ++i) {
@@ -315,9 +314,8 @@ int main() {
     key2[Nodes::PREFIX_SIZE + 3] = 0;
     Actions::insert(&root, key2, Nodes::PREFIX_SIZE + 4, 11);
 
-    ASSERT_VALUE(Actions::search(root, key, Nodes::PREFIX_SIZE + 4), (Value)10);
-    ASSERT_VALUE(Actions::search(root, key2, Nodes::PREFIX_SIZE + 4),
-                 (Value)11);
+    ASSERT_VALUE(Actions::search(root, key, Nodes::PREFIX_SIZE + 4), 10);
+    ASSERT_VALUE(Actions::search(root, key2, Nodes::PREFIX_SIZE + 4), 11);
   }
 
   { // common prefix with a non-leaf
@@ -330,7 +328,7 @@ int main() {
     key[Nodes::PREFIX_SIZE + 4] = 0;
     Actions::insert(&root, key, Nodes::PREFIX_SIZE + 5, 10);
 
-    ASSERT_VALUE(Actions::search(root, key, Nodes::PREFIX_SIZE + 5), (Value)10);
+    ASSERT_VALUE(Actions::search(root, key, Nodes::PREFIX_SIZE + 5), 10);
 
     uint8_t key2[Nodes::PREFIX_SIZE + 5];
     for (size_t i = 0; i < Nodes::PREFIX_SIZE + 3; ++i) {
@@ -340,9 +338,8 @@ int main() {
     key2[Nodes::PREFIX_SIZE + 4] = 0;
     Actions::insert(&root, key2, Nodes::PREFIX_SIZE + 5, 11);
 
-    ASSERT_VALUE(Actions::search(root, key, Nodes::PREFIX_SIZE + 5), (Value)10);
-    ASSERT_VALUE(Actions::search(root, key2, Nodes::PREFIX_SIZE + 5),
-                 (Value)11);
+    ASSERT_VALUE(Actions::search(root, key, Nodes::PREFIX_SIZE + 5), 10);
+    ASSERT_VALUE(Actions::search(root, key2, Nodes::PREFIX_SIZE + 5), 11);
 
     uint8_t key3[Nodes::PREFIX_SIZE + 4];
     for (size_t i = 0; i < Nodes::PREFIX_SIZE + 2; ++i) {
@@ -352,10 +349,8 @@ int main() {
     key3[Nodes::PREFIX_SIZE + 3] = 0;
     Actions::insert(&root, key3, Nodes::PREFIX_SIZE + 4, 12);
 
-    ASSERT_VALUE(Actions::search(root, key, Nodes::PREFIX_SIZE + 5), (Value)10);
-    ASSERT_VALUE(Actions::search(root, key2, Nodes::PREFIX_SIZE + 5),
-                 (Value)11);
-    ASSERT_VALUE(Actions::search(root, key3, Nodes::PREFIX_SIZE + 4),
-                 (Value)12);
+    ASSERT_VALUE(Actions::search(root, key, Nodes::PREFIX_SIZE + 5), 10);
+    ASSERT_VALUE(Actions::search(root, key2, Nodes::PREFIX_SIZE + 5), 11);
+    ASSERT_VALUE(Actions::search(root, key3, Nodes::PREFIX_SIZE + 4), 12);
   }
 }

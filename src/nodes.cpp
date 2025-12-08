@@ -52,7 +52,7 @@ template Header* makeNewNode<Type::NODE256>();
 Leaf* makeNewLeaf(KEY, Value value) {
   Leaf* leaf = (Leaf*)malloc(sizeof(Leaf));
 
-  uint8_t* buf = (uint8_t*)malloc(key_len * sizeof(uint8_t));
+  uint8_t* buf = (uint8_t*)malloc(key_len);
   memcpy(buf, key, key_len);
   leaf->key = buf;
 
@@ -128,8 +128,8 @@ void maybeGrow(Header** node_header) {
 }
 
 // TODO: Improve
-void addChildSmallNode(uint8_t* keys, void** children, uint8_t count,
-                       KEY /* key, key_len */, Value value, size_t depth) {
+void addChildSmallNode(uint8_t* keys, void** children, uint8_t count, KEY,
+                       Value value, size_t depth) {
   uint8_t i;
   for (i = 0; i < count && keys[i] < key[depth]; ++i)
     ;
@@ -144,8 +144,7 @@ void addChildSmallNode(uint8_t* keys, void** children, uint8_t count,
   children[i] = smuggleLeaf(makeNewLeaf(key, key_len, value));
 }
 
-void addChild(Header* node_header, KEY /* key, key_len */, Value value,
-              size_t depth) {
+void addChild(Header* node_header, KEY, Value value, size_t depth) {
   assert(!isFull(node_header));
 
   if (node_header->type == Type::NODE4) {

@@ -184,8 +184,7 @@ void insertInOrder(Nodes::Node4* new_node, uint8_t k1, uint8_t k2, void* v1,
 }
 
 // Returns the new header
-void* splitLeafPrefix(Nodes::Leaf* old_leaf, KEY, Value value,
-                               size_t depth) {
+void* splitLeafPrefix(Nodes::Leaf* old_leaf, KEY, Value value, size_t depth) {
   // What is the common key segment?
   size_t i = depth;
   const size_t stop = min(key_len, old_leaf->key_len);

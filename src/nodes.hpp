@@ -61,8 +61,6 @@ struct Node256 {
 template <Type NT> Header* makeNewNode();
 Header* makeNewRoot();
 
-constexpr size_t nodeSize(Type nt);
-
 bool isFull(const Header* node_header);
 void grow(Header** node_header);
 

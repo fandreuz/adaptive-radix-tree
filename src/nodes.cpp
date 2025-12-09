@@ -22,7 +22,7 @@ void* Header::getNode() const {
     action(256);                                                               \
   ShouldNotReachHere;
 
-constexpr size_t nodeSize(Type nt) {
+size_t nodeSize(Type nt) {
 #define SIZEOF_ACTION(N) return sizeof(Node##N)
   DISPATCH_CHILDREN_COUNT(SIZEOF_ACTION, nt)
   return 0;
@@ -33,8 +33,7 @@ template <Type NT> Header* makeNewNode() {
   header->type = NT;
   header->prefix_len = 0;
   header->prefix = nullptr;
-  size_t zero = 0;
-  __atomic_store(&(header->version), &zero, __ATOMIC_SEQ_CST);
+  header->version = 0;
 
   if (NT == Type::NODE48) {
     memset(header->getNode(), Node48::EMPTY, 256);

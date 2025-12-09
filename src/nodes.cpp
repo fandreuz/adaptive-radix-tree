@@ -33,6 +33,8 @@ template <Type NT> Header* makeNewNode() {
   header->type = NT;
   header->prefix_len = 0;
   header->prefix = nullptr;
+  size_t zero = 0;
+  __atomic_store(&(header->version), &zero, __ATOMIC_SEQ_CST);
 
   if (NT == Type::NODE48) {
     memset(header->getNode(), Node48::EMPTY, 256);
@@ -67,9 +69,8 @@ bool isFull(const Header* node_header) {
   return false;
 }
 
-void maybeGrow(Header** node_header) {
-  if (!isFull(*node_header))
-    return;
+void grow(Header** node_header) {
+  assert(isFull(*node_header));
 
   Header* new_header;
   if ((*node_header)->type == Type::NODE4) {

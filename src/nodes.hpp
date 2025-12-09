@@ -26,6 +26,7 @@ struct Header {
   size_t prefix_len;
   uint8_t* prefix;
   uint8_t children_count;
+  size_t version;
 
   void* getNode() const;
 };
@@ -61,8 +62,8 @@ template <Type NT> Header* makeNewNode();
 
 constexpr size_t nodeSize(Type nt);
 
-// Check if we should grow the node before adding a new child
-void maybeGrow(Header** node_header);
+bool isFull(const Header* node_header);
+void grow(Header** node_header);
 
 void addChild(Header* node_header, KEY, Value value, size_t depth);
 void** findChild(const Nodes::Header* node_header, uint8_t key);

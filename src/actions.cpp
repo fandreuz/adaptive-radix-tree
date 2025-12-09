@@ -1,4 +1,5 @@
 #include "actions.hpp"
+#include "lock.hpp"
 #include "utils.hpp"
 #include <cassert>
 #include <cstring>
@@ -92,46 +93,66 @@ bool prefixMatches(const Nodes::Header* node_header, KEY, size_t depth,
   return true;
 }
 
-const Value* searchImpl(Nodes::Header* node_header_ptr, KEY, size_t depth) {
+const Value* searchImpl(Nodes::Header* node_header, KEY, size_t depth) {
+  Nodes::Header* parent = nullptr;
+  size_t parent_version;
+  size_t version;
   while (true) {
-    assert(node_header_ptr != nullptr);
-    assert(!Nodes::isLeaf(node_header_ptr));
+    assert(node_header != nullptr);
+    assert(!Nodes::isLeaf(node_header));
     assert(depth < key_len);
 
-    if (key_len < depth + node_header_ptr->prefix_len + 1)
+    READ_LOCK_OR_RESTART(node_header, version)
+    if (parent != nullptr) {
+      READ_UNLOCK_OR_RESTART(parent, parent_version)
+    }
+
+    if (key_len < depth + node_header->prefix_len + 1) {
+      READ_UNLOCK_OR_RESTART(node_header, version)
       return nullptr;
+    }
 
     size_t first_diff;
     const uint8_t* min_key;
     size_t min_key_len;
 
     {
-      bool match = prefixMatches(node_header_ptr, key, key_len, depth,
-                                 first_diff, min_key, min_key_len);
-      if (!match)
+      bool match = prefixMatches(node_header, key, key_len, depth, first_diff,
+                                 min_key, min_key_len);
+      if (!match) {
+        READ_UNLOCK_OR_RESTART(node_header, version)
         return nullptr;
+      }
     }
 
-    depth += node_header_ptr->prefix_len;
+    depth += node_header->prefix_len;
 
-    void** next_src = Nodes::findChild(node_header_ptr, key[depth]);
-    if (next_src == nullptr)
+    void** next_src = Nodes::findChild(node_header, key[depth]);
+    CHECK_OR_RESTART(node_header, version)
+
+    if (next_src == nullptr) {
+      READ_UNLOCK_OR_RESTART(node_header, version)
       return nullptr;
+    }
+
     assert(*next_src != nullptr);
     ++depth;
 
     if (Nodes::isLeaf(*next_src)) {
       auto leaf = Nodes::asLeaf(*next_src);
       bool match = key_len == leaf->key_len && memcmp(leaf->key, KARGS) == 0;
+      READ_UNLOCK_OR_RESTART(node_header, version)
       return match ? &leaf->value : nullptr;
     }
 
-    node_header_ptr = Nodes::asHeader(*next_src);
+    parent = node_header;
+    parent_version = version;
+    node_header = Nodes::asHeader(*next_src);
   }
 }
 
-const Value* search(Nodes::Header* node_header_ptr, KEY) {
-  return searchImpl(node_header_ptr, KARGS, 0 /* depth */);
+const Value* search(Nodes::Header* node_header, KEY) {
+  return searchImpl(node_header, KARGS, 0 /* depth */);
 }
 
 void insertInOrder(Nodes::Node4* new_node, uint8_t k1, uint8_t k2, void* v1,
@@ -156,19 +177,33 @@ void insertInOrder(Nodes::Node4* new_node, uint8_t k1, uint8_t k2, void* v1,
 
 void insertImpl(Nodes::Header** node_header_ptr, KEY, Value value,
                 size_t depth) {
+  Nodes::Header* parent = nullptr;
+  size_t parent_version;
+  size_t version;
   while (true) {
+    Nodes::Header* node_header = *node_header_ptr;
+    READ_LOCK_OR_RESTART(node_header, version)
+
     assert(node_header_ptr != nullptr);
-    assert(*node_header_ptr != nullptr);
-    assert(!Nodes::isLeaf(*node_header_ptr));
+    assert(node_header != nullptr);
+    assert(!Nodes::isLeaf(node_header));
     assert(depth < key_len);
 
     size_t first_diff;
     const uint8_t* min_key;
     size_t min_key_len;
-    bool prefix_matches = prefixMatches(*node_header_ptr, key, key_len, depth,
+    bool prefix_matches = prefixMatches(node_header, key, key_len, depth,
                                         first_diff, min_key, min_key_len);
 
     if (!prefix_matches) {
+      if (parent != nullptr) {
+        UPGRADE_TO_WRITE_LOCK_OR_RESTART(parent, parent_version)
+        UPGRADE_TO_WRITE_LOCK_OR_RESTART_WITH_LOCKED_NODE(node_header, version,
+                                                          parent)
+      } else {
+        UPGRADE_TO_WRITE_LOCK_OR_RESTART(node_header, version)
+      }
+
       Nodes::Header* new_node_header = Nodes::makeNewNode<Nodes::Type::NODE4>();
       Nodes::Node4* new_node = (Nodes::Node4*)new_node_header->getNode();
 
@@ -178,44 +213,80 @@ void insertImpl(Nodes::Header** node_header_ptr, KEY, Value value,
       size_t actual_prefix_len =
           Nodes::cap_prefix_size(new_node_header->prefix_len);
       new_node_header->prefix = (uint8_t*)malloc(actual_prefix_len);
-      memcpy(new_node_header->prefix, (*node_header_ptr)->prefix,
-             actual_prefix_len);
+      memcpy(new_node_header->prefix, node_header->prefix, actual_prefix_len);
 
       // shorten old prefix: it'll be a suffix of the old prefix.
       // +1 because an element of the prefix (the first diff) will
       // be part of the new parent.
-      (*node_header_ptr)->prefix_len -= (1 + new_node_header->prefix_len);
+      node_header->prefix_len -= (1 + new_node_header->prefix_len);
       uint8_t diff_bit;
       if (min_key != nullptr) {
         diff_bit = min_key[depth + first_diff];
-        memcpy((*node_header_ptr)->prefix, min_key + depth + first_diff + 1,
-               Nodes::cap_prefix_size((*node_header_ptr)->prefix_len));
+        memcpy(node_header->prefix, min_key + depth + first_diff + 1,
+               Nodes::cap_prefix_size(node_header->prefix_len));
       } else {
-        diff_bit = (*node_header_ptr)->prefix[first_diff];
-        memmove((*node_header_ptr)->prefix,
-                (*node_header_ptr)->prefix + first_diff + 1,
-                Nodes::cap_prefix_size((*node_header_ptr)->prefix_len));
+        diff_bit = node_header->prefix[first_diff];
+        memmove(node_header->prefix, node_header->prefix + first_diff + 1,
+                Nodes::cap_prefix_size(node_header->prefix_len));
       }
 
       Nodes::Leaf* new_leaf = Nodes::makeNewLeaf(key, key_len, value);
       insertInOrder(new_node, key[first_diff + depth], diff_bit,
-                    Nodes::smuggleLeaf(new_leaf), *node_header_ptr);
+                    Nodes::smuggleLeaf(new_leaf), node_header);
       new_node_header->children_count = 2;
       *node_header_ptr = new_node_header;
+
+      Lock::writeUnlock(node_header);
+      if (parent != nullptr) {
+        Lock::writeUnlock(parent);
+      }
+
       return;
     }
 
-    depth += (*node_header_ptr)->prefix_len;
+    depth += node_header->prefix_len;
 
-    void** next_src = Nodes::findChild(*node_header_ptr, key[depth]);
+    void** next_src = Nodes::findChild(node_header, key[depth]);
+    CHECK_OR_RESTART(node_header, version)
+
     if (next_src == nullptr || *next_src == nullptr) {
-      Nodes::maybeGrow(node_header_ptr);
-      Nodes::addChild(*node_header_ptr, KARGS, value, depth);
+      if (Nodes::isFull(node_header)) {
+        if (parent != nullptr) {
+          UPGRADE_TO_WRITE_LOCK_OR_RESTART(parent, parent_version)
+          UPGRADE_TO_WRITE_LOCK_OR_RESTART_WITH_LOCKED_NODE(node_header,
+                                                            version, parent)
+        } else {
+          UPGRADE_TO_WRITE_LOCK_OR_RESTART(node_header, version)
+        }
+
+        Nodes::grow(node_header_ptr);
+        Nodes::addChild(*node_header_ptr, KARGS, value, depth);
+
+        Lock::writeUnlockObsolete(node_header);
+        if (parent != nullptr) {
+          Lock::writeUnlock(parent);
+        }
+        node_header = *node_header_ptr;
+      } else {
+        UPGRADE_TO_WRITE_LOCK_OR_RESTART(node_header, version)
+        if (parent != nullptr) {
+          READ_UNLOCK_OR_RESTART_WITH_LOCKED_NODE(parent, parent_version,
+                                                  node_header)
+        }
+        Nodes::addChild(node_header, KARGS, value, depth);
+        Lock::writeUnlock(node_header);
+      }
       return;
+    }
+
+    if (parent != nullptr) {
+      READ_UNLOCK_OR_RESTART(parent, parent_version)
     }
 
     depth += 1;
     if (Nodes::isLeaf(*next_src)) {
+      UPGRADE_TO_WRITE_LOCK_OR_RESTART(node_header, version)
+
       Nodes::Leaf* leaf = Nodes::asLeaf(*next_src);
       Nodes::Leaf* new_leaf = Nodes::makeNewLeaf(key, key_len, value);
 
@@ -242,9 +313,13 @@ void insertImpl(Nodes::Header** node_header_ptr, KEY, Value value,
       insertInOrder(new_node, key[i], leaf->key[i],
                     Nodes::smuggleLeaf(new_leaf), Nodes::smuggleLeaf(leaf));
       *next_src = new_node_header;
+
+      Lock::writeUnlock(node_header);
       return;
     }
 
+    parent = node_header;
+    parent_version = version;
     node_header_ptr = (Nodes::Header**)next_src;
   }
 }

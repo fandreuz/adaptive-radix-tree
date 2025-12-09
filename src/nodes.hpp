@@ -65,7 +65,7 @@ bool isFull(const Header* node_header);
 void grow(Header** node_header);
 
 void addChild(Header* node_header, KEY, Value value, size_t depth);
-void** findChild(const Nodes::Header* node_header, uint8_t key);
+void** findChild(Nodes::Header* node_header, uint8_t key);
 
 inline bool isLeaf(const void* ptr) { return (((uintptr_t)ptr) & 1) == 1; }
 

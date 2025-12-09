@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
+#include <emmintrin.h>
 #include <new>
 
 namespace Nodes {
@@ -129,42 +130,57 @@ void grow(Header** node_header) {
   return;
 }
 
-// TODO: Improve
-void addChildSmallNode(uint8_t* keys, void** children, uint8_t count, KEY,
-                       Value value, size_t depth) {
-  uint8_t i;
-  for (i = 0; i < count && keys[i] < key[depth]; ++i)
-    ;
+// Shift right all elements after 'start' (inclusive)
+void shiftRight(uint8_t* keys, void** children, size_t count, size_t start) {
+  size_t shift_count = count - start;
+  memmove(keys + start + 1, keys + start, shift_count);
+  memmove(children + start + 1, children + start, shift_count * sizeof(void**));
+}
 
-  size_t shift_count = count - i;
-  if (shift_count > 0) {
-    memmove(keys + i + 1, keys + i, shift_count);
-    memmove(children + i + 1, children + i, shift_count * sizeof(void**));
+void addChildNode16(Header* node_header, KEY, Value value, size_t depth) {
+  assert(node_header->type == Type::NODE16);
+
+  auto node = (Node16*)node_header->getNode();
+  __m128i key_vec = _mm_set1_epi8(key[depth]);
+  __m128i cmp = _mm_cmpgt_epi8(key_vec, _mm_loadu_si128((__m128i*)node->keys));
+  uint16_t mask = (1u << node_header->children_count) - 1;
+  uint16_t bitfield = _mm_movemask_epi8(cmp) & mask;
+
+  int index;
+  if (bitfield) {
+    index = __builtin_ctz(bitfield);
+  } else {
+    index = node_header->children_count;
   }
 
-  keys[i] = key[depth];
-  children[i] = smuggleLeaf(makeNewLeaf(key, key_len, value));
+  shiftRight(node->keys, node->children, node_header->children_count, index);
+  node->keys[index] = key[depth];
+  node->children[index] = smuggleLeaf(makeNewLeaf(key, key_len, value));
 }
 
 void addChild(Header* node_header, KEY, Value value, size_t depth) {
   assert(!isFull(node_header));
 
   if (node_header->type == Type::NODE4) {
-    Node4* node = (Node4*)node_header->getNode();
-    addChildSmallNode(node->keys, node->children, node_header->children_count,
-                      KARGS, value, depth);
+    auto node = (Node4*)node_header->getNode();
+    uint8_t i;
+    for (i = 0; i < node_header->children_count && node->keys[i] < key[depth];
+         ++i)
+      ;
+
+    shiftRight(node->keys, node->children, node_header->children_count, i);
+    node->keys[i] = key[depth];
+    node->children[i] = smuggleLeaf(makeNewLeaf(key, key_len, value));
   } else if (node_header->type == Type::NODE16) {
-    Node16* node = (Node16*)node_header->getNode();
-    addChildSmallNode(node->keys, node->children, node_header->children_count,
-                      KARGS, value, depth);
+    addChildNode16(node_header, KARGS, value, depth);
   } else if (node_header->type == Type::NODE48) {
-    Node48* node = (Node48*)node_header->getNode();
+    auto node = (Node48*)node_header->getNode();
     assert(node->child_index[(uint8_t)key[depth]] == Node48::EMPTY);
     node->child_index[(uint8_t)key[depth]] = node_header->children_count;
     node->children[node_header->children_count] =
         smuggleLeaf(makeNewLeaf(key, key_len, value));
   } else if (node_header->type == Type::NODE256) {
-    Node256* node = (Node256*)node_header->getNode();
+    auto node = (Node256*)node_header->getNode();
     assert(node->children[(uint8_t)key[depth]] == nullptr);
     node->children[(uint8_t)key[depth]] =
         smuggleLeaf(makeNewLeaf(key, key_len, value));
@@ -175,26 +191,28 @@ void addChild(Header* node_header, KEY, Value value, size_t depth) {
   ++(node_header->children_count);
 }
 
-// TODO: Improve
-void** findChildSmallNode(const uint8_t* keys, void** children, uint8_t key,
-                          uint8_t count) {
-  for (uint8_t i = 0; i < count; ++i) {
-    if (keys[i] == key) {
-      return &(children[i]);
-    }
-  }
-  return nullptr;
+void** findChildNode16(Header* node_header, uint8_t key) {
+  assert(node_header->type == Type::NODE16);
+
+  auto node = (Node16*)node_header->getNode();
+  __m128i key_vec = _mm_set1_epi8(key);
+  __m128i cmp = _mm_cmpeq_epi8(key_vec, _mm_loadu_si128((__m128i*)node->keys));
+  uint16_t mask = (1u << node_header->children_count) - 1;
+  uint16_t bitfield = _mm_movemask_epi8(cmp) & mask;
+  return bitfield ? &(node->children[__builtin_ctz(bitfield)]) : nullptr;
 }
 
-void** findChild(const Header* node_header, uint8_t key) {
+void** findChild(Header* node_header, uint8_t key) {
   if (node_header->type == Type::NODE4) {
     auto node = (Node4*)node_header->getNode();
-    return findChildSmallNode(node->keys, node->children, key,
-                              node_header->children_count);
+    for (uint8_t i = 0; i < node_header->children_count; ++i) {
+      if (node->keys[i] == key) {
+        return &(node->children[i]);
+      }
+    }
+    return nullptr;
   } else if (node_header->type == Type::NODE16) {
-    auto node = (Node16*)node_header->getNode();
-    return findChildSmallNode(node->keys, node->children, key,
-                              node_header->children_count);
+    return findChildNode16(node_header, key);
   } else if (node_header->type == Type::NODE48) {
     auto node = (Node48*)node_header->getNode();
     uint8_t child_index = node->child_index[key];

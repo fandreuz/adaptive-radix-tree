@@ -54,6 +54,7 @@ size_t setLockedBit(size_t version);
             &(node->version), &exp_copy, Lock::setLockedBit(exp_copy),         \
             false /* weak */, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)) {           \
       Lock::writeUnlock(locked_node);                                          \
+      RESTART                                                                  \
     }                                                                          \
   }
 

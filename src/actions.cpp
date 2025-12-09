@@ -184,21 +184,23 @@ void insertInOrder(Nodes::Node4* new_node, uint8_t k1, uint8_t k2, void* v1,
 }
 
 // Returns the new header
-Nodes::Header* splitLeafPrefix(Nodes::Leaf* old_leaf, KEY, Value value,
+void* splitLeafPrefix(Nodes::Leaf* old_leaf, KEY, Value value,
                                size_t depth) {
-  Nodes::Leaf* new_leaf = Nodes::makeNewLeaf(key, key_len, value);
-
-  // The new parent of both leaf and the new value
-  Nodes::Header* new_node_header = Nodes::makeNewNode<Nodes::Type::NODE4>();
-  Nodes::Node4* new_node = (Nodes::Node4*)new_node_header->getNode();
-
   // What is the common key segment?
   size_t i = depth;
   const size_t stop = min(key_len, old_leaf->key_len);
   while (i < stop && key[i] == old_leaf->key[i]) {
     ++i;
   }
-  assert(i != key_len || i != old_leaf->key_len); // TODO: support key update
+  if (i == key_len && key_len == old_leaf->key_len) {
+    old_leaf->value = value;
+    return Nodes::smuggleLeaf(old_leaf);
+  }
+  assert(i == key_len || i == old_leaf->key_len || key[i] != old_leaf->key[i]);
+
+  // The new parent of both leaf and the new value
+  Nodes::Header* new_node_header = Nodes::makeNewNode<Nodes::Type::NODE4>();
+  Nodes::Node4* new_node = (Nodes::Node4*)new_node_header->getNode();
 
   new_node_header->prefix_len = i - depth;
   size_t actual_prefix_size =
@@ -208,6 +210,7 @@ Nodes::Header* splitLeafPrefix(Nodes::Leaf* old_leaf, KEY, Value value,
 
   new_node_header->children_count = 2;
 
+  Nodes::Leaf* new_leaf = Nodes::makeNewLeaf(key, key_len, value);
   insertInOrder(new_node, key[i], old_leaf->key[i],
                 Nodes::smuggleLeaf(new_leaf), Nodes::smuggleLeaf(old_leaf));
   return new_node_header;

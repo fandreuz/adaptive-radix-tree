@@ -93,10 +93,18 @@ bool prefixMatches(const Nodes::Header* node_header, KEY, size_t depth,
   return true;
 }
 
-const Value* searchImpl(Nodes::Header* node_header, KEY, size_t depth) {
-  Nodes::Header* parent = nullptr;
-  size_t parent_version;
+const Value* searchImpl(Nodes::Header* root, KEY) {
+  Nodes::Header* parent;
+  Nodes::Header* node_header;
+  size_t depth;
   size_t version;
+  size_t parent_version;
+
+RESTART_POINT:
+  node_header = root;
+  parent = nullptr;
+  depth = 0;
+
   while (true) {
     assert(node_header != nullptr);
     assert(!Nodes::isLeaf(node_header));
@@ -151,8 +159,8 @@ const Value* searchImpl(Nodes::Header* node_header, KEY, size_t depth) {
   }
 }
 
-const Value* search(Nodes::Header* node_header, KEY) {
-  return searchImpl(node_header, KARGS, 0 /* depth */);
+const Value* search(Nodes::Header* root, KEY) {
+  return searchImpl(root, KARGS);
 }
 
 void insertInOrder(Nodes::Node4* new_node, uint8_t k1, uint8_t k2, void* v1,
@@ -175,11 +183,18 @@ void insertInOrder(Nodes::Node4* new_node, uint8_t k1, uint8_t k2, void* v1,
   }
 }
 
-void insertImpl(Nodes::Header** node_header_ptr, KEY, Value value,
-                size_t depth) {
-  Nodes::Header* parent = nullptr;
+void insertImpl(Nodes::Header* root, KEY, Value value) {
+  Nodes::Header** node_header_ptr;
+  Nodes::Header* parent;
+  size_t depth;
   size_t parent_version;
   size_t version;
+
+RESTART_POINT:
+  depth = 0;
+  parent = nullptr;
+  node_header_ptr = &root;
+
   while (true) {
     Nodes::Header* node_header = *node_header_ptr;
     READ_LOCK_OR_RESTART(node_header, version)
@@ -234,6 +249,7 @@ void insertImpl(Nodes::Header** node_header_ptr, KEY, Value value,
       insertInOrder(new_node, key[first_diff + depth], diff_bit,
                     Nodes::smuggleLeaf(new_leaf), node_header);
       new_node_header->children_count = 2;
+      assert(*node_header_ptr != root);
       *node_header_ptr = new_node_header;
 
       Lock::writeUnlock(node_header);
@@ -259,6 +275,7 @@ void insertImpl(Nodes::Header** node_header_ptr, KEY, Value value,
           UPGRADE_TO_WRITE_LOCK_OR_RESTART(node_header, version)
         }
 
+        assert(*node_header_ptr != root); // root should not need to be grown
         Nodes::grow(node_header_ptr);
         Nodes::addChild(*node_header_ptr, KARGS, value, depth);
 
@@ -324,12 +341,9 @@ void insertImpl(Nodes::Header** node_header_ptr, KEY, Value value,
   }
 }
 
-void insert(
-    Nodes::Header**
-        node_header_ptr /* pointer to the parent's pointer to the child */,
-    KEY, Value value) {
+void insert(Nodes::Header* root, KEY, Value value) {
   assert(key[key_len - 1] == 0);
-  insertImpl(node_header_ptr, KARGS, value, 0 /* depth */);
+  insertImpl(root, KARGS, value);
 }
 
 } // namespace Actions

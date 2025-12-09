@@ -51,6 +51,8 @@ template Header* makeNewNode<Type::NODE16>();
 template Header* makeNewNode<Type::NODE48>();
 template Header* makeNewNode<Type::NODE256>();
 
+Header* makeNewRoot() { return makeNewNode<Type::NODE256>(); }
+
 Leaf* makeNewLeaf(KEY, Value value) {
   Leaf* leaf = (Leaf*)malloc(sizeof(Leaf));
 

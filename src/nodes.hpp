@@ -59,6 +59,7 @@ struct Node256 {
 };
 
 template <Type NT> Header* makeNewNode();
+Header* makeNewRoot();
 
 constexpr size_t nodeSize(Type nt);
 

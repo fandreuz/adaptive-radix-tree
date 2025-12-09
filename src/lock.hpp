@@ -9,7 +9,7 @@ void writeUnlockObsolete(Nodes::Header* node);
 size_t setLockedBit(size_t version);
 } // namespace Lock
 
-#define RESTART
+#define RESTART goto RESTART_POINT;
 
 #define READ_LOCK_OR_RESTART(node, version)                                    \
   version = Lock::awaitNodeUnlocked(node);                                     \

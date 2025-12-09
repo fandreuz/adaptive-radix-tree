@@ -112,6 +112,7 @@ RESTART_POINT:
 
     READ_LOCK_OR_RESTART(node_header, version)
     if (parent != nullptr) {
+      // TODO: get rid of the if
       READ_UNLOCK_OR_RESTART(parent, parent_version)
     }
 
@@ -120,11 +121,10 @@ RESTART_POINT:
       return nullptr;
     }
 
-    size_t first_diff;
-    const uint8_t* min_key;
-    size_t min_key_len;
-
     {
+      size_t first_diff;
+      const uint8_t* min_key;
+      size_t min_key_len;
       bool match = prefixMatches(node_header, key, key_len, depth, first_diff,
                                  min_key, min_key_len);
       if (!match) {
@@ -183,6 +183,36 @@ void insertInOrder(Nodes::Node4* new_node, uint8_t k1, uint8_t k2, void* v1,
   }
 }
 
+// Returns the new header
+Nodes::Header* splitLeafPrefix(Nodes::Leaf* old_leaf, KEY, Value value,
+                               size_t depth) {
+  Nodes::Leaf* new_leaf = Nodes::makeNewLeaf(key, key_len, value);
+
+  // The new parent of both leaf and the new value
+  Nodes::Header* new_node_header = Nodes::makeNewNode<Nodes::Type::NODE4>();
+  Nodes::Node4* new_node = (Nodes::Node4*)new_node_header->getNode();
+
+  // What is the common key segment?
+  size_t i = depth;
+  const size_t stop = min(key_len, old_leaf->key_len);
+  while (i < stop && key[i] == old_leaf->key[i]) {
+    ++i;
+  }
+  assert(i != key_len || i != old_leaf->key_len); // TODO: support key update
+
+  new_node_header->prefix_len = i - depth;
+  size_t actual_prefix_size =
+      Nodes::cap_prefix_size(new_node_header->prefix_len);
+  new_node_header->prefix = (uint8_t*)malloc(actual_prefix_size);
+  memcpy(new_node_header->prefix, old_leaf->key + depth, actual_prefix_size);
+
+  new_node_header->children_count = 2;
+
+  insertInOrder(new_node, key[i], old_leaf->key[i],
+                Nodes::smuggleLeaf(new_leaf), Nodes::smuggleLeaf(old_leaf));
+  return new_node_header;
+}
+
 void insertImpl(Nodes::Header* root, KEY, Value value) {
   Nodes::Header** node_header_ptr;
   Nodes::Header* parent;
@@ -191,9 +221,31 @@ void insertImpl(Nodes::Header* root, KEY, Value value) {
   size_t version;
 
 RESTART_POINT:
-  depth = 0;
   parent = nullptr;
-  node_header_ptr = &root;
+
+  READ_LOCK_OR_RESTART(root, version)
+  void** next_src = Nodes::findChild(root, key[0]);
+  CHECK_OR_RESTART(root, version)
+
+  if (next_src == nullptr || *next_src == nullptr) {
+    assert(!Nodes::isFull(root));
+    UPGRADE_TO_WRITE_LOCK_OR_RESTART(root, version)
+    Nodes::addChild(root, KARGS, value, 0);
+    Lock::writeUnlock(root);
+    return;
+  }
+
+  depth = 1;
+  if (Nodes::isLeaf(*next_src)) {
+    UPGRADE_TO_WRITE_LOCK_OR_RESTART(root, version)
+    *next_src = splitLeafPrefix(Nodes::asLeaf(*next_src), KARGS, value, depth);
+    Lock::writeUnlock(root);
+    return;
+  }
+
+  parent = root;
+  parent_version = version;
+  node_header_ptr = (Nodes::Header**)next_src;
 
   while (true) {
     Nodes::Header* node_header = *node_header_ptr;
@@ -211,13 +263,9 @@ RESTART_POINT:
                                         first_diff, min_key, min_key_len);
 
     if (!prefix_matches) {
-      if (parent != nullptr) {
-        UPGRADE_TO_WRITE_LOCK_OR_RESTART(parent, parent_version)
-        UPGRADE_TO_WRITE_LOCK_OR_RESTART_WITH_LOCKED_NODE(node_header, version,
-                                                          parent)
-      } else {
-        UPGRADE_TO_WRITE_LOCK_OR_RESTART(node_header, version)
-      }
+      UPGRADE_TO_WRITE_LOCK_OR_RESTART(parent, parent_version)
+      UPGRADE_TO_WRITE_LOCK_OR_RESTART_WITH_LOCKED_NODE(node_header, version,
+                                                        parent)
 
       Nodes::Header* new_node_header = Nodes::makeNewNode<Nodes::Type::NODE4>();
       Nodes::Node4* new_node = (Nodes::Node4*)new_node_header->getNode();
@@ -253,9 +301,7 @@ RESTART_POINT:
       *node_header_ptr = new_node_header;
 
       Lock::writeUnlock(node_header);
-      if (parent != nullptr) {
-        Lock::writeUnlock(parent);
-      }
+      Lock::writeUnlock(parent);
 
       return;
     }
@@ -267,70 +313,34 @@ RESTART_POINT:
 
     if (next_src == nullptr || *next_src == nullptr) {
       if (Nodes::isFull(node_header)) {
-        if (parent != nullptr) {
-          UPGRADE_TO_WRITE_LOCK_OR_RESTART(parent, parent_version)
-          UPGRADE_TO_WRITE_LOCK_OR_RESTART_WITH_LOCKED_NODE(node_header,
-                                                            version, parent)
-        } else {
-          UPGRADE_TO_WRITE_LOCK_OR_RESTART(node_header, version)
-        }
+        UPGRADE_TO_WRITE_LOCK_OR_RESTART(parent, parent_version)
+        UPGRADE_TO_WRITE_LOCK_OR_RESTART_WITH_LOCKED_NODE(node_header, version,
+                                                          parent)
 
         assert(*node_header_ptr != root); // root should not need to be grown
         Nodes::grow(node_header_ptr);
         Nodes::addChild(*node_header_ptr, KARGS, value, depth);
 
         Lock::writeUnlockObsolete(node_header);
-        if (parent != nullptr) {
-          Lock::writeUnlock(parent);
-        }
+        Lock::writeUnlock(parent);
         node_header = *node_header_ptr;
       } else {
         UPGRADE_TO_WRITE_LOCK_OR_RESTART(node_header, version)
-        if (parent != nullptr) {
-          READ_UNLOCK_OR_RESTART_WITH_LOCKED_NODE(parent, parent_version,
-                                                  node_header)
-        }
+        READ_UNLOCK_OR_RESTART_WITH_LOCKED_NODE(parent, parent_version,
+                                                node_header)
         Nodes::addChild(node_header, KARGS, value, depth);
         Lock::writeUnlock(node_header);
       }
       return;
     }
 
-    if (parent != nullptr) {
-      READ_UNLOCK_OR_RESTART(parent, parent_version)
-    }
+    READ_UNLOCK_OR_RESTART(parent, parent_version)
 
     depth += 1;
     if (Nodes::isLeaf(*next_src)) {
       UPGRADE_TO_WRITE_LOCK_OR_RESTART(node_header, version)
-
-      Nodes::Leaf* leaf = Nodes::asLeaf(*next_src);
-      Nodes::Leaf* new_leaf = Nodes::makeNewLeaf(key, key_len, value);
-
-      // The new parent of both leaf and the new value
-      Nodes::Header* new_node_header = Nodes::makeNewNode<Nodes::Type::NODE4>();
-      Nodes::Node4* new_node = (Nodes::Node4*)new_node_header->getNode();
-
-      // What is the common key segment?
-      size_t i = depth;
-      const size_t stop = min(key_len, leaf->key_len);
-      while (i < stop && key[i] == leaf->key[i]) {
-        ++i;
-      }
-      assert(i != key_len || i != leaf->key_len); // TODO: support key update
-
-      new_node_header->prefix_len = i - depth;
-      size_t actual_prefix_size =
-          Nodes::cap_prefix_size(new_node_header->prefix_len);
-      new_node_header->prefix = (uint8_t*)malloc(actual_prefix_size);
-      memcpy(new_node_header->prefix, leaf->key + depth, actual_prefix_size);
-
-      new_node_header->children_count = 2;
-
-      insertInOrder(new_node, key[i], leaf->key[i],
-                    Nodes::smuggleLeaf(new_leaf), Nodes::smuggleLeaf(leaf));
-      *next_src = new_node_header;
-
+      *next_src =
+          splitLeafPrefix(Nodes::asLeaf(*next_src), KARGS, value, depth);
       Lock::writeUnlock(node_header);
       return;
     }

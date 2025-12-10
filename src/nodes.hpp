@@ -5,7 +5,6 @@
 #include <cassert>
 #include <cstdint>
 #include <cstring>
-#include <iostream>
 
 #define KEY const uint8_t *key, size_t key_len
 #define KARGS key, key_len

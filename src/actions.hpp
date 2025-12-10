@@ -2,7 +2,7 @@
 #define ACTIONS
 
 #include "nodes.hpp"
-#include <string>
+#include <cstdlib>
 
 namespace Actions {
 

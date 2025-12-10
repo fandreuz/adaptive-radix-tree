@@ -2,7 +2,6 @@
 #include "lock.hpp"
 #include "utils.hpp"
 #include <cassert>
-#include <cstring>
 
 namespace Actions {
 

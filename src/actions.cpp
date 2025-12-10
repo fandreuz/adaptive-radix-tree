@@ -10,7 +10,7 @@ void findMinimumKey(const void* node, const uint8_t*& out_key,
   while (true) {
     if (Nodes::isLeaf(node)) {
       auto leaf = Nodes::asLeaf(node);
-      out_key = leaf->key;
+      out_key = Nodes::getKey(leaf);
       out_len = leaf->key_len;
       return;
     }
@@ -147,7 +147,8 @@ RESTART_POINT:
 
     if (Nodes::isLeaf(*next_src)) {
       auto leaf = Nodes::asLeaf(*next_src);
-      bool match = key_len == leaf->key_len && memcmp(leaf->key, KARGS) == 0;
+      bool match =
+          key_len == leaf->key_len && memcmp(Nodes::getKey(leaf), KARGS) == 0;
       READ_UNLOCK_OR_RESTART(node_header, version)
       return match ? &leaf->value : nullptr;
     }
@@ -187,14 +188,15 @@ void* splitLeafPrefix(Nodes::Leaf* old_leaf, KEY, Value value, size_t depth) {
   // What is the common key segment?
   size_t i = depth;
   const size_t stop = min(key_len, old_leaf->key_len);
-  while (i < stop && key[i] == old_leaf->key[i]) {
+  while (i < stop && key[i] == Nodes::getKey(old_leaf)[i]) {
     ++i;
   }
   if (i == key_len && key_len == old_leaf->key_len) {
     old_leaf->value = value;
     return Nodes::smuggleLeaf(old_leaf);
   }
-  assert(i == key_len || i == old_leaf->key_len || key[i] != old_leaf->key[i]);
+  assert(i == key_len || i == old_leaf->key_len ||
+         key[i] != Nodes::getKey(old_leaf)[i]);
 
   // The new parent of both leaf and the new value
   Nodes::Header* new_node_header = Nodes::makeNewNode<Nodes::Type::NODE4>();
@@ -204,12 +206,13 @@ void* splitLeafPrefix(Nodes::Leaf* old_leaf, KEY, Value value, size_t depth) {
   size_t actual_prefix_size =
       Nodes::cap_prefix_size(new_node_header->prefix_len);
   new_node_header->prefix = (uint8_t*)malloc(actual_prefix_size);
-  memcpy(new_node_header->prefix, old_leaf->key + depth, actual_prefix_size);
+  memcpy(new_node_header->prefix, Nodes::getKey(old_leaf) + depth,
+         actual_prefix_size);
 
   new_node_header->children_count = 2;
 
   Nodes::Leaf* new_leaf = Nodes::makeNewLeaf(key, key_len, value);
-  insertInOrder(new_node, key[i], old_leaf->key[i],
+  insertInOrder(new_node, key[i], Nodes::getKey(old_leaf)[i],
                 Nodes::smuggleLeaf(new_leaf), Nodes::smuggleLeaf(old_leaf));
   return new_node_header;
 }

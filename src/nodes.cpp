@@ -54,12 +54,8 @@ template Header* makeNewNode<Type::NODE256>();
 Header* makeNewRoot() { return makeNewNode<Type::NODE256>(); }
 
 Leaf* makeNewLeaf(KEY, Value value) {
-  Leaf* leaf = (Leaf*)malloc(sizeof(Leaf));
-
-  uint8_t* buf = (uint8_t*)malloc(key_len);
-  memcpy(buf, key, key_len);
-  leaf->key = buf;
-
+  Leaf* leaf = (Leaf*)malloc(sizeof(Leaf) + key_len);
+  memcpy(getKey(leaf), key, key_len);
   leaf->key_len = key_len;
   leaf->value = value;
   return leaf;
@@ -80,7 +76,8 @@ void grow(Header** node_header) {
     new_header = makeNewNode<Type::NODE16>();
     auto new_node = (Node16*)new_header->getNode();
     memcpy(new_node->keys, node->keys, (*node_header)->children_count);
-    memcpy(new_node->children, node->children, (*node_header)->children_count * sizeof(void*));
+    memcpy(new_node->children, node->children,
+           (*node_header)->children_count * sizeof(void*));
   } else if ((*node_header)->type == Type::NODE16) {
     auto node = (Node16*)(*node_header)->getNode();
     new_header = makeNewNode<Type::NODE48>();

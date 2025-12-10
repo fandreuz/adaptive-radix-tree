@@ -31,10 +31,11 @@ struct Header {
 };
 
 struct Leaf {
-  const uint8_t* key;
   size_t key_len;
   Value value;
 };
+
+inline uint8_t* getKey(Leaf* leaf) { return (uint8_t*)(leaf + 1); }
 
 struct Node4 {
   uint8_t keys[4];

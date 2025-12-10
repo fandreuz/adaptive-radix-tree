@@ -55,6 +55,8 @@ Header* makeNewRoot() { return makeNewNode<Type::NODE256>(); }
 
 Leaf* makeNewLeaf(KEY, Value value) {
   Leaf* leaf = (Leaf*)malloc(sizeof(Leaf) + key_len);
+  assert((((uintptr_t)leaf) & 1) == 0);
+
   memcpy(getKey(leaf), key, key_len);
   leaf->key_len = key_len;
   leaf->value = value;

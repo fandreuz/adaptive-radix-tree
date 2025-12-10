@@ -26,7 +26,11 @@ size_t nodeSize(Type nt) {
 }
 
 template <Type NT> Header* makeNewNode() {
-  Header* header = (Header*)malloc(sizeof(Header) + nodeSize(NT));
+  // O1+ will inline the call to nodeSize to a constant after
+  // templating
+  size_t node_size = nodeSize(NT);
+
+  Header* header = (Header*)malloc(sizeof(Header) + node_size);
   header->type = NT;
   header->prefix_len = 0;
   header->prefix = nullptr;
@@ -36,7 +40,7 @@ template <Type NT> Header* makeNewNode() {
     memset(header->getNode(), Node48::EMPTY, 256);
     memset(((uint8_t*)header->getNode()) + 256, 0, sizeof(Node48) - 256);
   } else {
-    memset(header->getNode(), 0, nodeSize(NT));
+    memset(header->getNode(), 0, node_size);
   }
 
   return header;

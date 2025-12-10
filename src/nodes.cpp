@@ -76,10 +76,9 @@ void grow(Header** node_header) {
 
   Header* new_header;
   if ((*node_header)->type == Type::NODE4) {
-    Node4* node = (Node4*)(*node_header)->getNode();
-
+    auto node = (Node4*)(*node_header)->getNode();
     new_header = makeNewNode<Type::NODE16>();
-    Node16* new_node = (Node16*)new_header->getNode();
+    auto new_node = (Node16*)new_header->getNode();
     for (uint8_t i = 0; i < (*node_header)->children_count; ++i) {
       if (node->children[i] != nullptr) {
         new_node->keys[i] = node->keys[i];
@@ -87,11 +86,9 @@ void grow(Header** node_header) {
       }
     }
   } else if ((*node_header)->type == Type::NODE16) {
-    Node16* node = (Node16*)(*node_header)->getNode();
-
+    auto node = (Node16*)(*node_header)->getNode();
     new_header = makeNewNode<Type::NODE48>();
-    Node48* new_node = (Node48*)new_header->getNode();
-
+    auto new_node = (Node48*)new_header->getNode();
     uint8_t child_index = 0;
     for (uint8_t i = 0; i < (*node_header)->children_count; ++i) {
       if (node->children[i] != nullptr) {
@@ -103,11 +100,9 @@ void grow(Header** node_header) {
       }
     }
   } else if ((*node_header)->type == Type::NODE48) {
-    Node48* node = (Node48*)(*node_header)->getNode();
-
+    auto node = (Node48*)(*node_header)->getNode();
     new_header = makeNewNode<Type::NODE256>();
-    Node256* new_node = (Node256*)new_header->getNode();
-
+    auto new_node = (Node256*)new_header->getNode();
     uint8_t child_index = 0;
     for (uint8_t i = 0; i < 256; ++i) {
       if (node->child_index[i] != Node48::EMPTY) {

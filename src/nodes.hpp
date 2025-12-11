@@ -2,6 +2,7 @@
 #define NODES
 
 #include "utils.hpp"
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <cstring>
@@ -15,16 +16,17 @@ namespace Nodes {
 const size_t PREFIX_SIZE = 8;
 
 inline size_t cap_prefix_size(size_t prefix_size) {
-  return min(prefix_size, PREFIX_SIZE);
+  return std::min(prefix_size, PREFIX_SIZE);
 }
 
 enum class Type : uint8_t { NODE4, NODE16, NODE48, NODE256 };
 
 struct Header {
   Type type;
-  size_t prefix_len;
-  uint8_t* prefix;
   uint8_t children_count;
+  uint32_t prefix_len;
+  uint8_t min_key; // only for Node48 and Node256
+  uint8_t* prefix;
   size_t version;
 
   void* getNode() const;

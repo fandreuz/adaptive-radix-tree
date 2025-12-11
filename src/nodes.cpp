@@ -1,5 +1,6 @@
 #include "nodes.hpp"
 #include "utils.hpp"
+#include <algorithm>
 #include <emmintrin.h>
 
 namespace Nodes {
@@ -35,6 +36,7 @@ template <Type NT> Header* makeNewNode() {
   header->prefix_len = 0;
   header->prefix = nullptr;
   header->version = 0;
+  header->min_key = 255;
 
   if (NT == Type::NODE48) {
     memset(header->getNode(), Node48::EMPTY, 256);
@@ -77,26 +79,24 @@ void grow(Header** node_header) {
     auto node = (Node4*)(*node_header)->getNode();
     new_header = makeNewNode<Type::NODE16>();
     auto new_node = (Node16*)new_header->getNode();
-    memcpy(new_node->keys, node->keys, (*node_header)->children_count);
-    memcpy(new_node->children, node->children,
-           (*node_header)->children_count * sizeof(void*));
+    memcpy(new_node->keys, node->keys, 4);
+    memcpy(new_node->children, node->children, 4 * sizeof(void*));
   } else if ((*node_header)->type == Type::NODE16) {
     auto node = (Node16*)(*node_header)->getNode();
     new_header = makeNewNode<Type::NODE48>();
     auto new_node = (Node48*)new_header->getNode();
-    uint8_t child_index = 0;
-    for (uint8_t i = 0; child_index < (*node_header)->children_count; ++i) {
-      if (node->children[i] != nullptr) {
-        new_node->child_index[node->keys[i]] = child_index;
-        new_node->children[child_index++] = node->children[i];
-      }
+    new_header->min_key = node->keys[0];
+    for (uint8_t i = 0; i < 16; ++i) {
+      new_node->child_index[node->keys[i]] = i;
+      new_node->children[i] = node->children[i];
     }
   } else if ((*node_header)->type == Type::NODE48) {
     auto node = (Node48*)(*node_header)->getNode();
     new_header = makeNewNode<Type::NODE256>();
     auto new_node = (Node256*)new_header->getNode();
+    new_header->min_key = (*node_header)->min_key;
     uint8_t found = 0;
-    for (uint8_t i = 0; found == (*node_header)->children_count; ++i) {
+    for (uint8_t i = 0; found < 48; ++i) {
       if (node->child_index[i] != Node48::EMPTY) {
         new_node->children[i] = node->children[node->child_index[i]];
         ++found;
@@ -158,16 +158,17 @@ void addChild(Header* node_header, KEY, Value value, size_t depth) {
   } else if (node_header->type == Type::NODE16) {
     addChildNode16(node_header, KARGS, value, depth);
   } else if (node_header->type == Type::NODE48) {
+    node_header->min_key = std::min(node_header->min_key, key[depth]);
     auto node = (Node48*)node_header->getNode();
-    assert(node->child_index[(uint8_t)key[depth]] == Node48::EMPTY);
-    node->child_index[(uint8_t)key[depth]] = node_header->children_count;
+    assert(node->child_index[key[depth]] == Node48::EMPTY);
+    node->child_index[key[depth]] = node_header->children_count;
     node->children[node_header->children_count] =
         smuggleLeaf(makeNewLeaf(key, key_len, value));
   } else if (node_header->type == Type::NODE256) {
+    node_header->min_key = std::min(node_header->min_key, key[depth]);
     auto node = (Node256*)node_header->getNode();
-    assert(node->children[(uint8_t)key[depth]] == nullptr);
-    node->children[(uint8_t)key[depth]] =
-        smuggleLeaf(makeNewLeaf(key, key_len, value));
+    assert(node->children[key[depth]] == nullptr);
+    node->children[key[depth]] = smuggleLeaf(makeNewLeaf(key, key_len, value));
   } else {
     ShouldNotReachHere;
   }

@@ -1,6 +1,7 @@
 #include "actions.hpp"
 #include "lock.hpp"
 #include "utils.hpp"
+#include <algorithm>
 #include <cassert>
 
 namespace Actions {
@@ -8,6 +9,7 @@ namespace Actions {
 void findMinimumKey(const void* node, const uint8_t*& out_key,
                     size_t& out_len) {
   while (true) {
+    assert(node != nullptr);
     if (Nodes::isLeaf(node)) {
       auto leaf = Nodes::asLeaf(node);
       out_key = Nodes::getKey(leaf);
@@ -28,22 +30,14 @@ void findMinimumKey(const void* node, const uint8_t*& out_key,
     }
     if (header->type == Nodes::Type::NODE48) {
       auto next = (Nodes::Node48*)header->getNode();
-      for (uint8_t i = 0; i < 48; ++i) {
-        if (next->children[i] != nullptr) {
-          node = next->children[i];
-          break;
-        }
-      }
+      node = next->children[next->child_index[header->min_key]];
+      assert(node != nullptr);
       continue;
     }
     if (header->type == Nodes::Type::NODE256) {
       auto next = (Nodes::Node256*)header->getNode();
-      for (uint8_t i = 0; i < 256; ++i) {
-        if (next->children[i] != nullptr) {
-          node = next->children[i];
-          break;
-        }
-      }
+      node = next->children[header->min_key];
+      assert(node != nullptr);
       continue;
     }
   }
@@ -57,7 +51,7 @@ bool prefixMatches(const Nodes::Header* node_header, KEY, size_t depth,
   size_t i;
   {
     const size_t prefix_len = Nodes::cap_prefix_size(node_header->prefix_len);
-    const size_t stop = min(prefix_len, key_len - depth);
+    const size_t stop = std::min(prefix_len, key_len - depth);
     for (i = 0; i < stop; ++i) {
       if (key[i + depth] != node_header->prefix[i]) {
         first_diff = i;
@@ -81,8 +75,8 @@ bool prefixMatches(const Nodes::Header* node_header, KEY, size_t depth,
 
   i += depth;
   const size_t stop =
-      min(/* should not look farther than the prefix */
-          depth + node_header->prefix_len, min(min_key_len, key_len));
+      std::min(/* should not look farther than the prefix */
+               depth + node_header->prefix_len, std::min(min_key_len, key_len));
   for (; i < stop; ++i) {
     if (key[i] != min_key[i]) {
       first_diff = i - depth;
@@ -187,7 +181,7 @@ void insertInOrder(Nodes::Node4* new_node, uint8_t k1, uint8_t k2, void* v1,
 void* splitLeafPrefix(Nodes::Leaf* old_leaf, KEY, Value value, size_t depth) {
   // What is the common key segment?
   size_t i = depth;
-  const size_t stop = min(key_len, old_leaf->key_len);
+  const size_t stop = std::min(key_len, old_leaf->key_len);
   while (i < stop && key[i] == Nodes::getKey(old_leaf)[i]) {
     ++i;
   }

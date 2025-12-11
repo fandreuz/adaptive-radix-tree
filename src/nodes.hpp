@@ -27,7 +27,7 @@ struct Header {
   uint32_t prefix_len;
   uint8_t min_key; // only for Node48 and Node256
   uint8_t* prefix;
-  size_t version;
+  uint64_t version;
 
   void* getNode() const;
 };

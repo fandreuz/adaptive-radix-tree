@@ -13,7 +13,7 @@ typedef long Value;
 
 namespace Nodes {
 
-const size_t PREFIX_SIZE = 8;
+constexpr size_t PREFIX_SIZE = 8;
 
 inline size_t cap_prefix_size(size_t prefix_size) {
   return std::min(prefix_size, PREFIX_SIZE);
@@ -50,7 +50,7 @@ struct Node16 {
 };
 
 struct Node48 {
-  static const uint8_t EMPTY = 48;
+  static constexpr uint8_t EMPTY = 48;
 
   uint8_t child_index[256];
   void* children[48];

@@ -4,10 +4,6 @@
 #include <iostream>
 #include <string>
 
-#define ASSERT_KEY_EQ(leaf, expected)                                          \
-  assert(leaf->key_len == strlen(expected) + 1);                               \
-  assert(memcmp(Nodes::getKey(leaf), expected, leaf->key_len - 1) == 0);
-
 #define ASSERT_VALUE(out, expected)                                            \
   assert(out != nullptr);                                                      \
   assert(*out == expected);

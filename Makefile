@@ -13,3 +13,9 @@ build-test: $(SOURCES)
 
 test: build-test
 	./run_test
+
+build-bench: $(SOURCES)
+	g++ $(FLAGS) bench.cpp $(SOURCES) -o run_bench
+
+bench: build-bench
+	./run_bench

@@ -121,7 +121,7 @@ RESTART_POINT:
       size_t first_diff;
       const uint8_t* min_key;
       size_t min_key_len;
-      bool match = prefixMatches(node_header, key, key_len, depth, first_diff,
+      bool match = prefixMatches(node_header, KARGS, depth, first_diff,
                                  min_key, min_key_len);
       if (!match) {
         READ_UNLOCK_OR_RESTART(version_ptr, version)
@@ -208,7 +208,7 @@ void* splitLeafPrefix(Nodes::Leaf* old_leaf, KEY, Value value, size_t depth) {
 
   new_node_header->children_count = 2;
 
-  Nodes::Leaf* new_leaf = Nodes::makeNewLeaf(key, key_len, value);
+  Nodes::Leaf* new_leaf = Nodes::makeNewLeaf(KARGS, value);
   insertInOrder(new_node, key[i], Nodes::getKey(old_leaf)[i],
                 Nodes::smuggleLeaf(new_leaf), Nodes::smuggleLeaf(old_leaf));
   return new_node_header;
@@ -265,7 +265,7 @@ RESTART_POINT:
     size_t first_diff;
     const uint8_t* min_key;
     size_t min_key_len;
-    bool prefix_matches = prefixMatches(node_header, key, key_len, depth,
+    bool prefix_matches = prefixMatches(node_header, KARGS, depth,
                                         first_diff, min_key, min_key_len);
 
     if (!prefix_matches) {
@@ -299,7 +299,7 @@ RESTART_POINT:
                 Nodes::cap_prefix_size(node_header->prefix_len));
       }
 
-      Nodes::Leaf* new_leaf = Nodes::makeNewLeaf(key, key_len, value);
+      Nodes::Leaf* new_leaf = Nodes::makeNewLeaf(KARGS, value);
       insertInOrder(new_node, key[first_diff + depth], diff_bit,
                     Nodes::smuggleLeaf(new_leaf), node_header);
       new_node_header->children_count = 2;

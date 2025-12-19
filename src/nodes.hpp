@@ -11,12 +11,12 @@
 #define KARGS key, key_len
 typedef long Value;
 
+#define PREFIX_SIZE 8
+
 namespace Nodes {
 
-constexpr size_t PREFIX_SIZE = 8;
-
 inline size_t cap_prefix_size(size_t prefix_size) {
-  return std::min(prefix_size, PREFIX_SIZE);
+  return std::min(prefix_size, (size_t) PREFIX_SIZE);
 }
 
 enum class Type : uint8_t { NODE4, NODE16, NODE48, NODE256 };
@@ -24,9 +24,15 @@ enum class Type : uint8_t { NODE4, NODE16, NODE48, NODE256 };
 struct Header {
   Type type;
   uint8_t children_count;
+  // Compressed prefix length. Real prefix length in Header::prefix
+  // is capped at PREFIX_SIZE.
   uint32_t prefix_len;
-  uint8_t min_key; // only for Node48 and Node256
+  // Value of the minimum key bit currently stored in this node.
+  // Valid only for Node48 and Node256
+  uint8_t min_key;
+  // Compressed prefix
   uint8_t* prefix;
+  // For synchronization
   uint64_t version;
 
   void* getNode() const;

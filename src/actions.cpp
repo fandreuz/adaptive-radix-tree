@@ -330,7 +330,17 @@ RESTART_POINT:
     CHECK_OR_RESTART(version_ptr, version)
 
     if (next_src == nullptr || *next_src == nullptr) {
-      if (Nodes::isFull(node_header) && depth < key_len) {
+      if (!Nodes::isFull(node_header) || depth == key_len) {
+        UPGRADE_TO_WRITE_LOCK_OR_RESTART(version_ptr, version)
+        READ_UNLOCK_OR_RESTART_WITH_LOCKED_NODE(parent_version_ptr,
+                                                parent_version, version_ptr)
+        if (depth < key_len) {
+          Nodes::addChild(*node_header_ptr, KARGS, value, depth);
+        } else {
+          Nodes::addChildKeyEnd(node_header, KARGS, value);
+        }
+        Lock::writeUnlock(version_ptr);
+      } else {
         UPGRADE_TO_WRITE_LOCK_OR_RESTART(parent_version_ptr, parent_version)
         UPGRADE_TO_WRITE_LOCK_OR_RESTART_WITH_LOCKED_NODE(version_ptr, version,
                                                           parent_version_ptr)
@@ -343,16 +353,6 @@ RESTART_POINT:
         Lock::writeUnlockObsolete(version_ptr);
         Lock::writeUnlock(parent_version_ptr);
         node_header = *node_header_ptr;
-      } else {
-        UPGRADE_TO_WRITE_LOCK_OR_RESTART(version_ptr, version)
-        READ_UNLOCK_OR_RESTART_WITH_LOCKED_NODE(parent_version_ptr,
-                                                parent_version, version_ptr)
-        if (depth < key_len) {
-          Nodes::addChild(*node_header_ptr, KARGS, value, depth);
-        } else {
-          Nodes::addChildKeyEnd(node_header, KARGS, value);
-        }
-        Lock::writeUnlock(version_ptr);
       }
       return;
     }

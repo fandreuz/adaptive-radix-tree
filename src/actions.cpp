@@ -130,8 +130,14 @@ RESTART_POINT:
     }
 
     depth += node_header->prefix_len;
+    assert(depth <= key_len);
 
-    void** next_src = Nodes::findChild(node_header, key[depth]);
+    void** next_src;
+    if (depth < key_len) {
+      next_src = Nodes::findChild(node_header, key[depth]);
+    } else {
+      next_src = Nodes::findChildKeyEnd(node_header);
+    }
     CHECK_OR_RESTART(version_ptr, version)
 
     if (next_src == nullptr) {
@@ -313,8 +319,14 @@ RESTART_POINT:
     }
 
     depth += node_header->prefix_len;
+    assert(depth <= key_len);
 
-    void** next_src = Nodes::findChild(node_header, key[depth]);
+    void** next_src;
+    if (depth < key_len) {
+      next_src = Nodes::findChild(node_header, key[depth]);
+    } else {
+      next_src = Nodes::findChildKeyEnd(node_header);
+    }
     CHECK_OR_RESTART(version_ptr, version)
 
     if (next_src == nullptr || *next_src == nullptr) {
@@ -358,7 +370,7 @@ RESTART_POINT:
 }
 
 void insert(Nodes::Header* root, KEY, Value value) {
-  assert(key[key_len - 1] == 0);
+  assert(key_len > 0);
   insertImpl(root, KARGS, value);
 }
 

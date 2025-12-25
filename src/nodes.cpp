@@ -31,7 +31,8 @@ template <Type NT> Header* makeNewNode() {
   // templating
   size_t node_size = nodeSize(NT);
 
-  Header* header = (Header*)malloc(sizeof(Header) + node_size);
+  Header* header = (Header*)malloc(sizeof(Header) + node_size +
+                                   sizeof(void*) /* for the end child */);
   header->type = NT;
   header->prefix_len = 0;
   header->prefix = nullptr;
@@ -40,7 +41,7 @@ template <Type NT> Header* makeNewNode() {
 
   if (NT == Type::NODE48) {
     memset(header->getNode(), Node48::EMPTY, 256);
-    memset(((uint8_t*)header->getNode()) + 256, 0, sizeof(Node48) - 256);
+    memset(((uint8_t*)header->getNode()) + 256, 0, node_size - 256);
   } else {
     memset(header->getNode(), 0, node_size);
   }
@@ -213,6 +214,13 @@ void** findChild(Header* node_header, uint8_t key) {
 
   ShouldNotReachHere;
   return nullptr;
+}
+
+void** findChildKeyEnd(Header* node_header) {
+  size_t node_size = nodeSize(node_header->type);
+  void* node = node_header->getNode();
+  void* key_end_child = (uint8_t*)node + node_size;
+  return (void**)key_end_child;
 }
 
 } // namespace Nodes

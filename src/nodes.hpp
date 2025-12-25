@@ -47,23 +47,24 @@ inline uint8_t* getKey(Leaf* leaf) { return (uint8_t*)(leaf + 1); }
 
 struct Node4 {
   uint8_t keys[4];
-  void* children[4];
+  void* children[4 + 1];
 };
 
 struct Node16 {
   uint8_t keys[16];
-  void* children[16];
+  void* children[16 + 1];
 };
 
 struct Node48 {
-  static constexpr uint8_t EMPTY = 48;
+  static constexpr uint8_t CHILDREN_COUNT = 48 + 1;
+  static constexpr uint8_t EMPTY = CHILDREN_COUNT;
 
   uint8_t child_index[256];
-  void* children[48];
+  void* children[CHILDREN_COUNT];
 };
 
 struct Node256 {
-  void* children[256];
+  void* children[256 + 1];
 };
 
 template <Type NT> Header* makeNewNode();
@@ -74,6 +75,7 @@ void grow(Header** node_header);
 
 void addChild(Header* node_header, KEY, Value value, size_t depth);
 void** findChild(Nodes::Header* node_header, uint8_t key);
+void** findChildKeyEnd(Header* node_header);
 
 inline bool isLeaf(const void* ptr) { return (((uintptr_t)ptr) & 1) == 1; }
 

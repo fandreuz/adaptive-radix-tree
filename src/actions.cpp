@@ -330,13 +330,14 @@ RESTART_POINT:
     CHECK_OR_RESTART(version_ptr, version)
 
     if (next_src == nullptr || *next_src == nullptr) {
-      if (Nodes::isFull(node_header)) {
+      if (Nodes::isFull(node_header) && depth < key_len) {
         UPGRADE_TO_WRITE_LOCK_OR_RESTART(parent_version_ptr, parent_version)
         UPGRADE_TO_WRITE_LOCK_OR_RESTART_WITH_LOCKED_NODE(version_ptr, version,
                                                           parent_version_ptr)
 
         assert(*node_header_ptr != root); // root should not need to be grown
         Nodes::grow(node_header_ptr);
+
         Nodes::addChild(*node_header_ptr, KARGS, value, depth);
 
         Lock::writeUnlockObsolete(version_ptr);
@@ -346,7 +347,11 @@ RESTART_POINT:
         UPGRADE_TO_WRITE_LOCK_OR_RESTART(version_ptr, version)
         READ_UNLOCK_OR_RESTART_WITH_LOCKED_NODE(parent_version_ptr,
                                                 parent_version, version_ptr)
-        Nodes::addChild(node_header, KARGS, value, depth);
+        if (depth < key_len) {
+          Nodes::addChild(*node_header_ptr, KARGS, value, depth);
+        } else {
+          Nodes::addChildKeyEnd(node_header, KARGS, value);
+        }
         Lock::writeUnlock(version_ptr);
       }
       return;

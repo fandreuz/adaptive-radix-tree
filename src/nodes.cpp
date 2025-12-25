@@ -177,6 +177,13 @@ void addChild(Header* node_header, KEY, Value value, size_t depth) {
   ++(node_header->children_count);
 }
 
+void addChildKeyEnd(Header* node_header, KEY, Value value) {
+  size_t node_size = nodeSize(node_header->type);
+  void* node = node_header->getNode();
+  void** key_end_child = (void**)((uint8_t*)node + node_size);
+  *key_end_child = smuggleLeaf(makeNewLeaf(KARGS, value));
+}
+
 void** findChildNode16(Header* node_header, uint8_t key) {
   assert(node_header->type == Type::NODE16);
 

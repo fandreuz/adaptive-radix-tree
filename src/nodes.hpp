@@ -16,7 +16,7 @@ typedef long Value;
 namespace Nodes {
 
 inline size_t cap_prefix_size(size_t prefix_size) {
-  return std::min(prefix_size, (size_t) PREFIX_SIZE);
+  return std::min(prefix_size, (size_t)PREFIX_SIZE);
 }
 
 enum class Type : uint8_t { NODE4, NODE16, NODE48, NODE256 };

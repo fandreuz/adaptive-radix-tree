@@ -121,8 +121,8 @@ RESTART_POINT:
       size_t first_diff;
       const uint8_t* min_key;
       size_t min_key_len;
-      bool match = prefixMatches(node_header, KARGS, depth, first_diff,
-                                 min_key, min_key_len);
+      bool match = prefixMatches(node_header, KARGS, depth, first_diff, min_key,
+                                 min_key_len);
       if (!match) {
         READ_UNLOCK_OR_RESTART(version_ptr, version)
         return nullptr;
@@ -265,8 +265,8 @@ RESTART_POINT:
     size_t first_diff;
     const uint8_t* min_key;
     size_t min_key_len;
-    bool prefix_matches = prefixMatches(node_header, KARGS, depth,
-                                        first_diff, min_key, min_key_len);
+    bool prefix_matches = prefixMatches(node_header, KARGS, depth, first_diff,
+                                        min_key, min_key_len);
 
     if (!prefix_matches) {
       UPGRADE_TO_WRITE_LOCK_OR_RESTART(parent_version_ptr, parent_version)

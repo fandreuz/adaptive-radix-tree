@@ -15,12 +15,17 @@ typedef long Value;
 
 namespace Nodes {
 
+struct Leaf;
+bool isLeaf(const void* ptr);
+
 inline size_t cap_prefix_size(size_t prefix_size) {
   return std::min(prefix_size, (size_t)PREFIX_SIZE);
 }
 
 enum class Type : uint8_t { NODE4, NODE16, NODE48, NODE256 };
 
+// When a node is allocated, the memory allocated shall have the
+// following structure:
 struct Header {
   Type type;
   uint8_t children_count;
@@ -37,13 +42,6 @@ struct Header {
 
   void* getNode() const;
 };
-
-struct Leaf {
-  size_t key_len;
-  Value value;
-};
-
-inline uint8_t* getKey(Leaf* leaf) { return (uint8_t*)(leaf + 1); }
 
 struct Node4 {
   uint8_t keys[4];
@@ -67,7 +65,7 @@ struct Node256 {
   void* children[256 + 1];
 };
 
-template <Type NT> Header* makeNewNode();
+template <Type NT, bool END_CHILD> Header* makeNewNode();
 Header* makeNewRoot();
 
 bool isFull(const Header* node_header);
@@ -80,12 +78,22 @@ void addChildKeyEnd(Header* node_header, Leaf* child);
 void** findChild(Nodes::Header* node_header, uint8_t key);
 Leaf** findChildKeyEnd(Header* node_header);
 
-inline bool isLeaf(const void* ptr) { return (((uintptr_t)ptr) & 1) == 1; }
-
 inline Header* asHeader(const void* ptr) {
   assert(!isLeaf(ptr));
   return (Nodes::Header*)ptr;
 }
+
+// When a Leaf is allocated, the memory allocated shall always be enough
+// to accomodate the whole key, immediately after the last field in the
+// struct.
+struct Leaf {
+  size_t key_len;
+  Value value;
+};
+
+inline uint8_t* getKey(Leaf* leaf) { return (uint8_t*)(leaf + 1); }
+
+inline bool isLeaf(const void* ptr) { return (((uintptr_t)ptr) & 1) == 1; }
 
 inline Leaf* asLeaf(const void* ptr) {
   assert(isLeaf(ptr));

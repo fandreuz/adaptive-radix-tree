@@ -221,7 +221,8 @@ void* splitLeafPrefix(Nodes::Leaf* old_leaf, KEY, Value value, size_t depth) {
          key[i] != Nodes::getKey(old_leaf)[i]);
 
   // The new parent of both leaf and the new value
-  Nodes::Header* new_node_header = Nodes::makeNewNode<Nodes::Type::NODE4>();
+  Nodes::Header* new_node_header =
+      Nodes::makeNewNode<Nodes::Type::NODE4, true>();
   Nodes::Node4* new_node = (Nodes::Node4*)new_node_header->getNode();
 
   new_node_header->prefix_len = i - depth;
@@ -308,7 +309,8 @@ RESTART_POINT:
       UPGRADE_TO_WRITE_LOCK_OR_RESTART_WITH_LOCKED_NODE(version_ptr, version,
                                                         parent_version_ptr)
 
-      Nodes::Header* new_node_header = Nodes::makeNewNode<Nodes::Type::NODE4>();
+      Nodes::Header* new_node_header =
+          Nodes::makeNewNode<Nodes::Type::NODE4, true>();
       Nodes::Node4* new_node = (Nodes::Node4*)new_node_header->getNode();
 
       // handle new prefix: it will contain a prefix of the old prefix, the

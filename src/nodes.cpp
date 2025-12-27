@@ -26,13 +26,13 @@ size_t nodeSize(Type nt) {
   return 0;
 }
 
-template <Type NT> Header* makeNewNode() {
+template <Type NT, bool END_CHILD> Header* makeNewNode() {
   // O1+ will inline the call to nodeSize to a constant after
   // templating
   size_t node_size = nodeSize(NT);
 
-  Header* header = (Header*)malloc(sizeof(Header) + node_size +
-                                   sizeof(void*) /* for the end child */);
+  const size_t end_child_size = END_CHILD ? sizeof(void*) : 0;
+  Header* header = (Header*)malloc(sizeof(Header) + node_size + end_child_size);
   header->type = NT;
   header->prefix_len = 0;
   header->prefix = nullptr;
@@ -49,12 +49,14 @@ template <Type NT> Header* makeNewNode() {
   return header;
 }
 
-template Header* makeNewNode<Type::NODE4>();
-template Header* makeNewNode<Type::NODE16>();
-template Header* makeNewNode<Type::NODE48>();
-template Header* makeNewNode<Type::NODE256>();
+template Header* makeNewNode<Type::NODE4, true>();
+template Header* makeNewNode<Type::NODE16, true>();
+template Header* makeNewNode<Type::NODE48, true>();
+template Header* makeNewNode<Type::NODE256, true>();
+// Only the root node needs to be end-child-less
+template Header* makeNewNode<Type::NODE256, false>();
 
-Header* makeNewRoot() { return makeNewNode<Type::NODE256>(); }
+Header* makeNewRoot() { return makeNewNode<Type::NODE256, true>(); }
 
 Leaf* makeNewLeaf(KEY, Value value) {
   Leaf* leaf = (Leaf*)malloc(sizeof(Leaf) + key_len);
@@ -78,13 +80,13 @@ void grow(Header** node_header) {
   Header* new_header;
   if ((*node_header)->type == Type::NODE4) {
     auto node = (Node4*)(*node_header)->getNode();
-    new_header = makeNewNode<Type::NODE16>();
+    new_header = makeNewNode<Type::NODE16, true>();
     auto new_node = (Node16*)new_header->getNode();
     memcpy(new_node->keys, node->keys, 4);
     memcpy(new_node->children, node->children, 4 * sizeof(void*));
   } else if ((*node_header)->type == Type::NODE16) {
     auto node = (Node16*)(*node_header)->getNode();
-    new_header = makeNewNode<Type::NODE48>();
+    new_header = makeNewNode<Type::NODE48, true>();
     auto new_node = (Node48*)new_header->getNode();
     new_header->min_key = node->keys[0];
     for (uint8_t i = 0; i < 16; ++i) {
@@ -93,7 +95,7 @@ void grow(Header** node_header) {
     }
   } else if ((*node_header)->type == Type::NODE48) {
     auto node = (Node48*)(*node_header)->getNode();
-    new_header = makeNewNode<Type::NODE256>();
+    new_header = makeNewNode<Type::NODE256, true>();
     auto new_node = (Node256*)new_header->getNode();
     new_header->min_key = (*node_header)->min_key;
     uint8_t found = 0;

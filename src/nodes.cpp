@@ -30,9 +30,9 @@ template <Type NT, bool END_CHILD> Header* makeNewNode() {
   // O1+ will inline the call to nodeSize to a constant after
   // templating
   size_t node_size = nodeSize(NT);
+  node_size += END_CHILD ? sizeof(void*) : 0;
 
-  const size_t end_child_size = END_CHILD ? sizeof(void*) : 0;
-  Header* header = (Header*)malloc(sizeof(Header) + node_size + end_child_size);
+  Header* header = (Header*)malloc(sizeof(Header) + node_size);
   header->type = NT;
   header->prefix_len = 0;
   header->prefix = nullptr;

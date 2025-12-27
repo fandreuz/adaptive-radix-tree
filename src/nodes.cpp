@@ -122,11 +122,11 @@ void shiftRight(uint8_t* keys, void** children, size_t count, size_t start) {
   memmove(children + start + 1, children + start, shift_count * sizeof(void**));
 }
 
-void addChildNode16(Header* node_header, KEY, Value value, size_t depth) {
+void addChildNode16(Header* node_header, uint8_t key, void* child) {
   assert(node_header->type == Type::NODE16);
 
   auto node = (Node16*)node_header->getNode();
-  __m128i key_vec = _mm_set1_epi8(key[depth]);
+  __m128i key_vec = _mm_set1_epi8(key);
   __m128i cmp = _mm_cmpgt_epi8(key_vec, _mm_loadu_si128((__m128i*)node->keys));
   uint16_t mask = (1u << node_header->children_count) - 1;
   uint16_t bitfield = _mm_movemask_epi8(cmp) & mask;
@@ -139,37 +139,39 @@ void addChildNode16(Header* node_header, KEY, Value value, size_t depth) {
   }
 
   shiftRight(node->keys, node->children, node_header->children_count, index);
-  node->keys[index] = key[depth];
-  node->children[index] = smuggleLeaf(makeNewLeaf(KARGS, value));
+  node->keys[index] = key;
+  node->children[index] = child;
 }
 
 void addChild(Header* node_header, KEY, Value value, size_t depth) {
+  addChild(node_header, key[depth], smuggleLeaf(makeNewLeaf(KARGS, value)));
+}
+
+void addChild(Header* node_header, uint8_t key, void* child) {
   assert(!isFull(node_header));
 
   if (node_header->type == Type::NODE4) {
     auto node = (Node4*)node_header->getNode();
     uint8_t i;
-    for (i = 0; i < node_header->children_count && node->keys[i] < key[depth];
-         ++i)
+    for (i = 0; i < node_header->children_count && node->keys[i] < key; ++i)
       ;
 
     shiftRight(node->keys, node->children, node_header->children_count, i);
-    node->keys[i] = key[depth];
-    node->children[i] = smuggleLeaf(makeNewLeaf(KARGS, value));
+    node->keys[i] = key;
+    node->children[i] = child;
   } else if (node_header->type == Type::NODE16) {
-    addChildNode16(node_header, KARGS, value, depth);
+    addChildNode16(node_header, key, child);
   } else if (node_header->type == Type::NODE48) {
-    node_header->min_key = std::min(node_header->min_key, key[depth]);
+    node_header->min_key = std::min(node_header->min_key, key);
     auto node = (Node48*)node_header->getNode();
-    assert(node->child_index[key[depth]] == Node48::EMPTY);
-    node->child_index[key[depth]] = node_header->children_count;
-    node->children[node_header->children_count] =
-        smuggleLeaf(makeNewLeaf(KARGS, value));
+    assert(node->child_index[key] == Node48::EMPTY);
+    node->child_index[key] = node_header->children_count;
+    node->children[node_header->children_count] = child;
   } else if (node_header->type == Type::NODE256) {
-    node_header->min_key = std::min(node_header->min_key, key[depth]);
+    node_header->min_key = std::min(node_header->min_key, key);
     auto node = (Node256*)node_header->getNode();
-    assert(node->children[key[depth]] == nullptr);
-    node->children[key[depth]] = smuggleLeaf(makeNewLeaf(KARGS, value));
+    assert(node->children[key] == nullptr);
+    node->children[key] = child;
   } else {
     ShouldNotReachHere;
   }
@@ -178,10 +180,14 @@ void addChild(Header* node_header, KEY, Value value, size_t depth) {
 }
 
 void addChildKeyEnd(Header* node_header, KEY, Value value) {
+  addChildKeyEnd(node_header, makeNewLeaf(KARGS, value));
+}
+
+void addChildKeyEnd(Header* node_header, Leaf* child) {
   size_t node_size = nodeSize(node_header->type);
   void* node = node_header->getNode();
   void** key_end_child = (void**)((uint8_t*)node + node_size);
-  *key_end_child = smuggleLeaf(makeNewLeaf(KARGS, value));
+  *key_end_child = child;
 }
 
 void** findChildNode16(Header* node_header, uint8_t key) {
@@ -223,11 +229,11 @@ void** findChild(Header* node_header, uint8_t key) {
   return nullptr;
 }
 
-void** findChildKeyEnd(Header* node_header) {
+Leaf** findChildKeyEnd(Header* node_header) {
   size_t node_size = nodeSize(node_header->type);
   void* node = node_header->getNode();
   void* key_end_child = (uint8_t*)node + node_size;
-  return (void**)key_end_child;
+  return (Leaf**)key_end_child;
 }
 
 } // namespace Nodes

@@ -1,6 +1,6 @@
 SOURCES := $(wildcard src/*.cpp)
 ALL_SOURCES := $(wildcard src/*.cpp) $(wildcard src/*.hpp) ./*.cpp
-FLAGS=-std=c++11 -Wall -O3
+FLAGS=-std=c++11 -Wall -O0 -ggdb3
 
 build: $(SOURCES)
 	g++ $(FLAGS) $(SOURCES)

@@ -26,6 +26,7 @@ enum class Type : uint8_t { NODE4, NODE16, NODE48, NODE256 };
 
 // When a node is allocated, the memory allocated shall have the
 // following structure:
+// Header -- NodeX -- [End child ptr]
 struct Header {
   Type type;
   uint8_t children_count;

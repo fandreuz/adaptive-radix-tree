@@ -6,6 +6,7 @@
 
 namespace Actions {
 
+// TODO: sync
 void findMinimumKey(const void* node, const uint8_t*& out_key,
                     size_t& out_len) {
   while (true) {

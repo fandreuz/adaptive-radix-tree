@@ -1,4 +1,5 @@
 #include "src/actions.hpp"
+#include <cassert>
 #include <chrono>
 #include <cstdint>
 #include <fcntl.h>
@@ -33,9 +34,9 @@ int main() {
     return 0;
   }
   char* addr = (char*)mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+  close(fd);
   if (addr == MAP_FAILED) {
     perror("mmap");
-    close(fd);
     exit(1);
   }
 
@@ -46,7 +47,7 @@ int main() {
   Nodes::Header* root = Nodes::makeNewRoot();
 
   char *start = addr, *end;
-  size_t value = 0;
+  long value = 0;
   while ((end = strchrnul(start, '\n')) < addr + sb.st_size) {
     Actions::insert(root, (uint8_t*)start, end - start, value++);
 
@@ -66,14 +67,22 @@ int main() {
   std::cout << "bench took " << bench_duration << "ns ("
             << bench_duration / OP_COUNT << "ns/op)" << std::endl;
 
-  munmap(addr, sb.st_size);
-  close(fd);
+  start = addr;
+  value = 0;
+  while ((end = strchrnul(start, '\n')) < addr + sb.st_size) {
+    const Value* v = Actions::search(root, (uint8_t*)start, end - start);
+    assert(v != nullptr);
+    assert(*v == value);
+    value++;
 
-  Actions::insert(root, (const uint8_t*)"Aaron", 5, 10);
-  std::cout << valueOrNull(Actions::search(root, (const uint8_t*)"Aaron", 5))
-            << std::endl;
-  std::cout << valueOrNull(Actions::search(root, (const uint8_t*)"Zyrenian", 8))
-            << std::endl;
+    if (*end == '\n') {
+      start = end + 1;
+    } else {
+      break;
+    }
+  }
+
+  munmap(addr, sb.st_size);
 
   Nodes::freeRecursive(root);
 }

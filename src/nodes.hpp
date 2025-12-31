@@ -69,6 +69,7 @@ struct Node256 {
 
 template <Type NT, bool END_CHILD> Header* makeNewNode();
 Header* makeNewRoot();
+void freeRecursive(Header* node_header);
 
 bool isFull(const Header* node_header);
 void grow(Header** node_header);

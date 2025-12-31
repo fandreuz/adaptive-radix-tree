@@ -59,6 +59,56 @@ template Header* makeNewNode<Type::NODE256, false>();
 
 Header* makeNewRoot() { return makeNewNode<Type::NODE256, true>(); }
 
+void freeNode(void* node) {
+  if (isLeaf(node)) {
+    free(asLeaf(node));
+  } else {
+    freeRecursive((Header*)node);
+  }
+}
+
+void freeRecursive(Header* node_header) {
+  free(node_header->prefix);
+  node_header->prefix = nullptr;
+  node_header->prefix_len = 0;
+  free(*findChildKeyEnd(node_header));
+
+  if (node_header->type == Type::NODE4) {
+    auto node = (Node4*)node_header->getNode();
+    for (uint8_t i = 0; i < node_header->children_count; ++i) {
+      freeNode(node->children[i]);
+    }
+  } else if (node_header->type == Type::NODE16) {
+    auto node = (Node16*)node_header->getNode();
+    for (uint8_t i = 0; i < node_header->children_count; ++i) {
+      freeNode(node->children[i]);
+    }
+  } else if (node_header->type == Type::NODE48) {
+    auto node = (Node48*)node_header->getNode();
+    uint8_t found = 0;
+    for (uint8_t i = 0; found < node_header->children_count; ++i) {
+      if (node->child_index[i] != Node48::EMPTY) {
+        freeNode(node->children[node->child_index[i]]);
+        ++found;
+      }
+    }
+  } else if (node_header->type == Type::NODE256) {
+    auto node = (Node256*)node_header->getNode();
+    uint8_t found = 0;
+    for (uint8_t i = 0; found < node_header->children_count; ++i) {
+      if (node->children[i] != nullptr) {
+        freeNode(node->children[i]);
+        ++found;
+      }
+    }
+  } else {
+    ShouldNotReachHere;
+    return;
+  }
+
+  free(node_header);
+}
+
 Leaf* makeNewLeaf(KEY, Value value) {
   Leaf* leaf = (Leaf*)malloc(sizeof(Leaf) + key_len);
   assert((((uintptr_t)leaf) & 1) == 0);

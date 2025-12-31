@@ -74,4 +74,6 @@ int main() {
             << std::endl;
   std::cout << valueOrNull(Actions::search(root, (const uint8_t*)"Zyrenian", 8))
             << std::endl;
+
+  Nodes::freeRecursive(root);
 }

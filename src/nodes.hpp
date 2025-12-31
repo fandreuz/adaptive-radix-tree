@@ -46,24 +46,25 @@ struct Header {
 
 struct Node4 {
   uint8_t keys[4];
-  void* children[4 + 1];
+  void* children[4];
 };
 
 struct Node16 {
   uint8_t keys[16];
-  void* children[16 + 1];
+  void* children[16];
 };
 
 struct Node48 {
-  static constexpr uint8_t CHILDREN_COUNT = 48 + 1;
-  static constexpr uint8_t EMPTY = CHILDREN_COUNT;
+  static constexpr uint8_t CHILDREN_COUNT = 48;
+  static constexpr uint8_t EMPTY =
+      CHILDREN_COUNT; // this index will never be used
 
   uint8_t child_index[256];
   void* children[CHILDREN_COUNT];
 };
 
 struct Node256 {
-  void* children[256 + 1];
+  void* children[256];
 };
 
 template <Type NT, bool END_CHILD> Header* makeNewNode();

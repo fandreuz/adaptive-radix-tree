@@ -289,7 +289,7 @@ RESTART_POINT:
   while (true) {
     uint64_t* const parent_version_ptr = &(parent->version);
     Nodes::Header* node_header = *node_header_ptr;
-    uint64_t* const version_ptr = &(node_header->version);
+    uint64_t* version_ptr = &(node_header->version);
 
     READ_LOCK_OR_RESTART(version_ptr, version)
 
@@ -325,16 +325,14 @@ RESTART_POINT:
       // +1 because an element of the prefix (the first diff) will
       // be part of the new parent.
       node_header->prefix_len -= (1 + new_node_header->prefix_len);
-      uint8_t diff_bit;
-      if (min_key != nullptr) {
-        diff_bit = min_key[depth];
-        memcpy(node_header->prefix, min_key + depth + 1,
-               Nodes::cap_prefix_size(node_header->prefix_len));
-      } else {
-        diff_bit = node_header->prefix[first_diff];
-        memmove(node_header->prefix, node_header->prefix + first_diff + 1,
-                Nodes::cap_prefix_size(node_header->prefix_len));
+
+      if (min_key == nullptr) {
+        // TODO: this is not always needed
+        findMinimumKey(node_header, min_key, min_key_len);
       }
+      uint8_t diff_bit = min_key[depth];
+      memcpy(node_header->prefix, min_key + depth + 1,
+             Nodes::cap_prefix_size(node_header->prefix_len));
 
       Nodes::Leaf* new_leaf = Nodes::makeNewLeaf(KARGS, value);
       insertInOrder(new_node, key[depth], diff_bit,
@@ -380,12 +378,14 @@ RESTART_POINT:
 
         assert(*node_header_ptr != root); // root should not need to be grown
         Nodes::grow(node_header_ptr);
-
         Nodes::addChild(*node_header_ptr, KARGS, value, depth);
 
         Lock::writeUnlockObsolete(version_ptr);
         Lock::writeUnlock(parent_version_ptr);
-        node_header = *node_header_ptr;
+
+        assert(*node_header_ptr != node_header);
+        // TODO: Should not free until nobody references it
+        free(node_header);
       }
       return;
     }

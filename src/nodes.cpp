@@ -38,6 +38,7 @@ template <Type NT, bool END_CHILD> Header* makeNewNode() {
   header->prefix = nullptr;
   header->version = 0;
   header->min_key = 255;
+  header->children_count = 0;
 
   if (NT == Type::NODE48) {
     memset(header->getNode(), Node48::EMPTY, 256);
@@ -113,6 +114,10 @@ void grow(Header** node_header) {
   }
 
   new_header->children_count = (*node_header)->children_count;
+  new_header->min_key = (*node_header)->min_key;
+  new_header->prefix = (*node_header)->prefix;
+  new_header->prefix_len = (*node_header)->prefix_len;
+
   *node_header = new_header;
   return;
 }
@@ -155,8 +160,9 @@ void addChild(Header* node_header, uint8_t key, void* child) {
   if (node_header->type == Type::NODE4) {
     auto node = (Node4*)node_header->getNode();
     uint8_t i;
-    for (i = 0; i < node_header->children_count && node->keys[i] < key; ++i)
-      ;
+    for (i = 0; i < node_header->children_count && node->keys[i] < key; ++i) {
+      assert(i < 4);
+    }
 
     shiftRight(node->keys, node->children, node_header->children_count, i);
     node->keys[i] = key;

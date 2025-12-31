@@ -4,7 +4,7 @@ namespace Lock {
 uint64_t awaitNodeUnlocked(uint64_t* version_ptr) {
   uint64_t version;
   __atomic_load(version_ptr, &version, __ATOMIC_SEQ_CST);
-  while ((version & 2) == 2) {
+  while ((version & 3) == 2) {
     __atomic_load(version_ptr, &version, __ATOMIC_SEQ_CST);
   }
   return version;

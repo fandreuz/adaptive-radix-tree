@@ -60,6 +60,7 @@ template Header* makeNewNode<Type::NODE256, false>();
 Header* makeNewRoot() { return makeNewNode<Type::NODE256, true>(); }
 
 void freeNode(void* node) {
+  assert(node != nullptr);
   if (isLeaf(node)) {
     free(asLeaf(node));
   } else {
@@ -85,22 +86,22 @@ void freeRecursive(Header* node_header) {
     }
   } else if (node_header->type == Type::NODE48) {
     auto node = (Node48*)node_header->getNode();
-    uint8_t found = 0;
-    for (uint8_t i = 0; found < node_header->children_count; ++i) {
+    for (uint8_t i = 0; node_header->children_count > 0; ++i) {
       if (node->child_index[i] != Node48::EMPTY) {
         freeNode(node->children[node->child_index[i]]);
-        ++found;
+        --node_header->children_count;
       }
     }
+    assert(node_header->children_count == 0);
   } else if (node_header->type == Type::NODE256) {
     auto node = (Node256*)node_header->getNode();
-    uint8_t found = 0;
-    for (uint8_t i = 0; found < node_header->children_count; ++i) {
+    for (uint8_t i = 0; node_header->children_count > 0; ++i) {
       if (node->children[i] != nullptr) {
         freeNode(node->children[i]);
-        ++found;
+        --node_header->children_count;
       }
     }
+    assert(node_header->children_count == 0);
   } else {
     ShouldNotReachHere;
     return;
@@ -163,6 +164,11 @@ void grow(Header** node_header) {
   new_header->min_key = (*node_header)->min_key;
   new_header->prefix = (*node_header)->prefix;
   new_header->prefix_len = (*node_header)->prefix_len;
+
+  Leaf* child = *findChildKeyEnd(*node_header);
+  if (child != nullptr) {
+    addChildKeyEnd(new_header, child);
+  }
 
   *node_header = new_header;
   return;

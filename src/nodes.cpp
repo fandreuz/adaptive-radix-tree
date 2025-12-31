@@ -149,12 +149,8 @@ void grow(Header** node_header) {
     new_header = makeNewNode<Type::NODE256, true>();
     auto new_node = (Node256*)new_header->getNode();
     new_header->min_key = (*node_header)->min_key;
-    uint8_t found = 0;
-    for (uint8_t i = 0; found < 48; ++i) {
-      if (node->child_index[i] != Node48::EMPTY) {
-        new_node->children[i] = node->children[node->child_index[i]];
-        ++found;
-      }
+    for (uint8_t i = 0; i < 48; ++i) {
+      new_node->children[i] = node->children[node->child_index[i]];
     }
   } else {
     // Node256 can't and should not need to be grown, as it can

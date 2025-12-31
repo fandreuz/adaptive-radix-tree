@@ -233,7 +233,6 @@ void* splitLeafPrefix(Nodes::Leaf* old_leaf, KEY, Value value, size_t depth) {
   memcpy(new_node_header->prefix, Nodes::getKey(old_leaf) + depth,
          actual_prefix_size);
 
-  Nodes::Leaf* new_leaf = Nodes::makeNewLeaf(KARGS, value);
   if (i == key_len) {
     Nodes::addChildKeyEnd(new_node_header, KARGS, value);
     Nodes::addChild(new_node_header, Nodes::getKey(old_leaf)[i],
@@ -244,6 +243,7 @@ void* splitLeafPrefix(Nodes::Leaf* old_leaf, KEY, Value value, size_t depth) {
     Nodes::addChildKeyEnd(new_node_header, old_leaf);
     new_node_header->children_count = 1;
   } else {
+    Nodes::Leaf* new_leaf = Nodes::makeNewLeaf(KARGS, value);
     insertInOrder(new_node, key[i], Nodes::getKey(old_leaf)[i],
                   Nodes::smuggleLeaf(new_leaf), Nodes::smuggleLeaf(old_leaf));
     new_node_header->children_count = 2;

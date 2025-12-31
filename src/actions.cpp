@@ -57,7 +57,7 @@ bool prefixMatches(const Nodes::Header* node_header, KEY, size_t depth,
 
   size_t i;
   {
-    const size_t prefix_len = Nodes::cap_prefix_size(node_header->prefix_len);
+    const size_t prefix_len = Nodes::capPrefixSize(node_header->prefix_len);
     const size_t stop = std::min(prefix_len, key_len - depth);
     for (i = 0; i < stop; ++i) {
       if (key[i + depth] != node_header->prefix[i]) {
@@ -228,7 +228,7 @@ void* splitLeafPrefix(Nodes::Leaf* old_leaf, KEY, Value value, size_t depth) {
 
   new_node_header->prefix_len = i - depth;
   size_t actual_prefix_size =
-      Nodes::cap_prefix_size(new_node_header->prefix_len);
+      Nodes::capPrefixSize(new_node_header->prefix_len);
   new_node_header->prefix = (uint8_t*)malloc(actual_prefix_size);
   memcpy(new_node_header->prefix, Nodes::getKey(old_leaf) + depth,
          actual_prefix_size);
@@ -318,7 +318,7 @@ RESTART_POINT:
       // common section with the new key
       new_node_header->prefix_len = first_diff;
       size_t actual_prefix_len =
-          Nodes::cap_prefix_size(new_node_header->prefix_len);
+          Nodes::capPrefixSize(new_node_header->prefix_len);
       new_node_header->prefix = (uint8_t*)malloc(actual_prefix_len);
       memcpy(new_node_header->prefix, node_header->prefix, actual_prefix_len);
 
@@ -333,7 +333,7 @@ RESTART_POINT:
       }
       uint8_t diff_bit = min_key[depth];
       memcpy(node_header->prefix, min_key + depth + 1,
-             Nodes::cap_prefix_size(node_header->prefix_len));
+             Nodes::capPrefixSize(node_header->prefix_len));
 
       Nodes::Leaf* new_leaf = Nodes::makeNewLeaf(KARGS, value);
       insertInOrder(new_node, key[depth], diff_bit,

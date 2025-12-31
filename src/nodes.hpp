@@ -18,7 +18,7 @@ namespace Nodes {
 struct Leaf;
 bool isLeaf(const void* ptr);
 
-inline size_t cap_prefix_size(size_t prefix_size) {
+inline size_t capPrefixSize(size_t prefix_size) {
   return std::min(prefix_size, (size_t)PREFIX_SIZE);
 }
 

@@ -227,8 +227,7 @@ void* splitLeafPrefix(Nodes::Leaf* old_leaf, KEY, Value value, size_t depth) {
   Nodes::Node4* new_node = (Nodes::Node4*)new_node_header->getNode();
 
   new_node_header->prefix_len = i - depth;
-  size_t actual_prefix_size =
-      Nodes::capPrefixSize(new_node_header->prefix_len);
+  size_t actual_prefix_size = Nodes::capPrefixSize(new_node_header->prefix_len);
   new_node_header->prefix = (uint8_t*)malloc(actual_prefix_size);
   memcpy(new_node_header->prefix, Nodes::getKey(old_leaf) + depth,
          actual_prefix_size);
@@ -325,15 +324,28 @@ RESTART_POINT:
       // shorten old prefix: it'll be a suffix of the old prefix.
       // +1 because an element of the prefix (the first diff) will
       // be part of the new parent.
+      uint32_t old_prefix_len = node_header->prefix_len;
       node_header->prefix_len -= (1 + new_node_header->prefix_len);
 
       if (min_key == nullptr) {
-        // TODO: this is not always needed
-        findMinimumKey(node_header, min_key, min_key_len);
+        // How much materialized prefix do we have?
+        uint32_t residual_prefix =
+            Nodes::capPrefixSize(old_prefix_len) - (first_diff + 1);
+        if (Nodes::capPrefixSize(node_header->prefix_len) > residual_prefix) {
+          findMinimumKey(node_header, min_key, min_key_len);
+        }
       }
-      uint8_t diff_bit = min_key[depth];
-      memcpy(node_header->prefix, min_key + depth + 1,
-             Nodes::capPrefixSize(node_header->prefix_len));
+
+      uint8_t diff_bit;
+      if (min_key == nullptr) {
+        diff_bit = node_header->prefix[first_diff];
+        memmove(node_header->prefix, node_header->prefix + first_diff + 1,
+                Nodes::capPrefixSize(node_header->prefix_len));
+      } else {
+        diff_bit = min_key[depth];
+        memcpy(node_header->prefix, min_key + depth + 1,
+               Nodes::capPrefixSize(node_header->prefix_len));
+      }
 
       Nodes::Leaf* new_leaf = Nodes::makeNewLeaf(KARGS, value);
       insertInOrder(new_node, key[depth], diff_bit,

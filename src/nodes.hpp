@@ -9,11 +9,13 @@
 
 #define KEY const uint8_t *key, size_t key_len
 #define KARGS key, key_len
-typedef long Value;
 
 #define PREFIX_SIZE 8
 
 namespace Nodes {
+
+typedef long Value;
+typedef uint16_t prefix_size_t;
 
 struct Leaf;
 bool isLeaf(const void* ptr);
@@ -32,7 +34,7 @@ struct Header {
   uint8_t children_count;
   // Compressed prefix length. Real prefix length in Header::prefix
   // is capped at PREFIX_SIZE.
-  uint32_t prefix_len;
+  prefix_size_t prefix_len;
   // Value of the minimum key bit currently stored in this node.
   // Valid only for Node48 and Node256
   uint8_t min_key;

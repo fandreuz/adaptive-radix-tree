@@ -94,7 +94,7 @@ bool prefixMatches(const Nodes::Header* node_header, KEY, size_t depth,
   return true;
 }
 
-const Value* searchImpl(Nodes::Header* root, KEY) {
+const Nodes::Value* searchImpl(Nodes::Header* root, KEY) {
   Nodes::Header* parent;
   Nodes::Header* node_header;
   size_t depth;
@@ -182,7 +182,7 @@ RESTART_POINT:
   }
 }
 
-const Value* search(Nodes::Header* root, KEY) {
+const Nodes::Value* search(Nodes::Header* root, KEY) {
   return searchImpl(root, KARGS);
 }
 
@@ -207,7 +207,8 @@ void insertInOrder(Nodes::Node4* new_node, uint8_t k1, uint8_t k2, void* v1,
 }
 
 // Returns the new header
-void* splitLeafPrefix(Nodes::Leaf* old_leaf, KEY, Value value, size_t depth) {
+void* splitLeafPrefix(Nodes::Leaf* old_leaf, KEY, Nodes::Value value,
+                      size_t depth) {
   // What is the common key segment?
   size_t i = depth;
   const size_t stop = std::min(key_len, old_leaf->key_len);
@@ -250,7 +251,7 @@ void* splitLeafPrefix(Nodes::Leaf* old_leaf, KEY, Value value, size_t depth) {
   return new_node_header;
 }
 
-void insertImpl(Nodes::Header* root, KEY, Value value) {
+void insertImpl(Nodes::Header* root, KEY, Nodes::Value value) {
   Nodes::Header** node_header_ptr;
   Nodes::Header* parent;
   size_t depth;
@@ -324,12 +325,12 @@ RESTART_POINT:
       // shorten old prefix: it'll be a suffix of the old prefix.
       // +1 because an element of the prefix (the first diff) will
       // be part of the new parent.
-      uint32_t old_prefix_len = node_header->prefix_len;
+      Nodes::prefix_size_t old_prefix_len = node_header->prefix_len;
       node_header->prefix_len -= (1 + new_node_header->prefix_len);
 
       if (min_key == nullptr) {
         // How much materialized prefix do we have?
-        uint32_t residual_prefix =
+        Nodes::prefix_size_t residual_prefix =
             Nodes::capPrefixSize(old_prefix_len) - (first_diff + 1);
         if (Nodes::capPrefixSize(node_header->prefix_len) > residual_prefix) {
           findMinimumKey(node_header, min_key, min_key_len);
@@ -426,7 +427,7 @@ RESTART_POINT:
   }
 }
 
-void insert(Nodes::Header* root, KEY, Value value) {
+void insert(Nodes::Header* root, KEY, Nodes::Value value) {
   assert(key_len > 0);
   insertImpl(root, KARGS, value);
 }

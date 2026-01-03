@@ -5,9 +5,11 @@
 
 namespace Nodes {
 
-uint8_t* Header::getPrefix() { return prefix; }
+uint8_t* Header::getPrefix() {
+  return (uint8_t*)((uintptr_t)this) + sizeof(Header);
+}
 
-void* Header::getNode() { return (void*)(((uintptr_t)this) + sizeof(Header)); }
+void* Header::getNode() { return (void*)(getPrefix() + PREFIX_SIZE); }
 
 #define DISPATCH_CHILDREN_COUNT(action, nt)                                    \
   if (nt == Type::NODE4)                                                       \
@@ -32,10 +34,9 @@ template <Type NT, bool END_CHILD> Header* makeNewNode() {
   size_t node_size = nodeSize(NT);
   node_size += END_CHILD ? sizeof(void*) : 0;
 
-  Header* header = (Header*)malloc(sizeof(Header) + node_size);
+  Header* header = (Header*)malloc(sizeof(Header) + PREFIX_SIZE + node_size);
   header->type = NT;
   header->prefix_len = 0;
-  header->prefix = (uint8_t*)malloc(PREFIX_SIZE);
   header->min_key = 255;
   header->children_count = 0;
 
@@ -68,7 +69,6 @@ void freeNode(void* node) {
 }
 
 void freeRecursive(Header* node_header) {
-  free(node_header->prefix);
   free(*findChildKeyEnd(node_header));
 
   if (node_header->type == Type::NODE4) {
@@ -160,7 +160,7 @@ void grow(Header** node_header) {
   new_header->children_count = (*node_header)->children_count;
   new_header->min_key = (*node_header)->min_key;
   new_header->prefix_len = (*node_header)->prefix_len;
-  memcpy(new_header->prefix, (*node_header)->prefix,
+  memcpy(new_header->getPrefix(), (*node_header)->getPrefix(),
          capPrefixSize(new_header->prefix_len));
 
   Leaf* child = *findChildKeyEnd(*node_header);

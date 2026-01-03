@@ -1,12 +1,13 @@
 #ifndef NODES
 #define NODES
 
-#include "utils.hpp"
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <cstring>
 #include <emmintrin.h>
+
+#define ShouldNotReachHere assert(false)
 
 #define KEY const uint8_t *key, size_t key_len
 #define KARGS key, key_len

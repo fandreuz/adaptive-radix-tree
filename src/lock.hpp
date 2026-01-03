@@ -1,11 +1,11 @@
-#include <cstdint>
+#include "nodes.hpp"
 
 namespace Lock {
-uint64_t awaitNodeUnlocked(uint64_t* version_ptr);
-bool isObsolete(uint64_t version);
-void writeUnlock(uint64_t* version_ptr);
-void writeUnlockObsolete(uint64_t* version_ptr);
-uint64_t setLockedBit(uint64_t version);
+Nodes::version_t awaitNodeUnlocked(Nodes::version_t* version_ptr);
+bool isObsolete(Nodes::version_t version);
+void writeUnlock(Nodes::version_t* version_ptr);
+void writeUnlockObsolete(Nodes::version_t* version_ptr);
+uint64_t setLockedBit(Nodes::version_t version);
 } // namespace Lock
 
 #define RESTART goto RESTART_POINT;
@@ -18,7 +18,7 @@ uint64_t setLockedBit(uint64_t version);
 
 #define READ_UNLOCK_OR_RESTART(version_ptr, expected)                          \
   {                                                                            \
-    uint64_t actual;                                                           \
+    Nodes::version_t actual;                                                   \
     __atomic_load(version_ptr, &actual, __ATOMIC_SEQ_CST);                     \
     if (expected != actual) {                                                  \
       RESTART                                                                  \
@@ -28,7 +28,7 @@ uint64_t setLockedBit(uint64_t version);
 #define READ_UNLOCK_OR_RESTART_WITH_LOCKED_NODE(version_ptr, expected,         \
                                                 version_ptr_locked)            \
   {                                                                            \
-    uint64_t actual;                                                           \
+    Nodes::version_t actual;                                                   \
     __atomic_load(version_ptr, &actual, __ATOMIC_SEQ_CST);                     \
     if (expected != actual) {                                                  \
       Lock::writeUnlock(version_ptr_locked);                                   \
@@ -38,7 +38,7 @@ uint64_t setLockedBit(uint64_t version);
 
 #define UPGRADE_TO_WRITE_LOCK_OR_RESTART(version_ptr, expected)                \
   {                                                                            \
-    uint64_t exp_copy = expected;                                              \
+    Nodes::version_t exp_copy = expected;                                      \
     if (!__atomic_compare_exchange_n(                                          \
             version_ptr, &exp_copy, Lock::setLockedBit(exp_copy),              \
             false /* weak */, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)) {           \
@@ -49,7 +49,7 @@ uint64_t setLockedBit(uint64_t version);
 #define UPGRADE_TO_WRITE_LOCK_OR_RESTART_WITH_LOCKED_NODE(                     \
     version_ptr, expected, version_ptr_locked)                                 \
   {                                                                            \
-    uint64_t exp_copy = expected;                                              \
+    Nodes::version_t exp_copy = expected;                                      \
     if (!__atomic_compare_exchange_n(                                          \
             version_ptr, &exp_copy, Lock::setLockedBit(exp_copy),              \
             false /* weak */, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)) {           \

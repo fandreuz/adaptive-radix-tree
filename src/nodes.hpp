@@ -16,6 +16,7 @@ namespace Nodes {
 
 typedef long Value;
 typedef uint16_t prefix_size_t;
+typedef uint64_t version_t;
 
 struct Leaf;
 bool isLeaf(const void* ptr);
@@ -41,7 +42,7 @@ struct Header {
   // Compressed prefix
   uint8_t* prefix;
   // For synchronization
-  uint64_t version;
+  version_t version;
 
   void* getNode() const;
 };

@@ -98,8 +98,8 @@ const Nodes::Value* searchImpl(Nodes::Header* root, KEY) {
   Nodes::Header* parent;
   Nodes::Header* node_header;
   size_t depth;
-  uint64_t version;
-  uint64_t parent_version;
+  Nodes::version_t version;
+  Nodes::version_t parent_version;
 
 RESTART_POINT:
   node_header = root;
@@ -107,8 +107,8 @@ RESTART_POINT:
   depth = 0;
 
   while (true) {
-    uint64_t* const parent_version_ptr = &(parent->version);
-    uint64_t* const version_ptr = &(node_header->version);
+    Nodes::version_t* const parent_version_ptr = &(parent->version);
+    Nodes::version_t* const version_ptr = &(node_header->version);
 
     assert(node_header != nullptr);
     assert(!Nodes::isLeaf(node_header));
@@ -255,13 +255,13 @@ void insertImpl(Nodes::Header* root, KEY, Nodes::Value value) {
   Nodes::Header** node_header_ptr;
   Nodes::Header* parent;
   size_t depth;
-  uint64_t parent_version;
-  uint64_t version;
+  Nodes::version_t parent_version;
+  Nodes::version_t version;
 
 RESTART_POINT:
   parent = nullptr;
 
-  uint64_t* const root_version_ptr = &(root->version);
+  Nodes::version_t* const root_version_ptr = &(root->version);
 
   READ_LOCK_OR_RESTART(root_version_ptr, version)
   void** next_src = Nodes::findChild(root, key[0]);
@@ -288,9 +288,9 @@ RESTART_POINT:
   node_header_ptr = (Nodes::Header**)next_src;
 
   while (true) {
-    uint64_t* const parent_version_ptr = &(parent->version);
+    Nodes::version_t* const parent_version_ptr = &(parent->version);
     Nodes::Header* node_header = *node_header_ptr;
-    uint64_t* version_ptr = &(node_header->version);
+    Nodes::version_t* version_ptr = &(node_header->version);
 
     READ_LOCK_OR_RESTART(version_ptr, version)
 

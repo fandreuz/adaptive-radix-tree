@@ -15,7 +15,7 @@
 #define OP_COUNT 1000000
 #define SIZE 1000
 
-std::string valueOrNull(const Value* v) {
+std::string valueOrNull(const Nodes::Value* v) {
   if (v == nullptr)
     return "null";
   return std::to_string(*v);
@@ -70,7 +70,7 @@ int main() {
   start = addr;
   value = 0;
   while ((end = strchrnul(start, '\n')) < addr + sb.st_size) {
-    const Value* v = Actions::search(root, (uint8_t*)start, end - start);
+    const Nodes::Value* v = Actions::search(root, (uint8_t*)start, end - start);
     assert(v != nullptr);
     assert(*v == value);
     value++;

@@ -1,3 +1,4 @@
+#include "src/allocator.hpp"
 #include "src/nodes.hpp"
 #include <cassert>
 #include <iostream>
@@ -9,7 +10,7 @@
 
 int main() {
   { // common prefix
-    Tree tree;
+    Tree<MallocAlloc> tree;
 
     uint8_t key[PREFIX_SIZE + 3]; // prefix + eq + diff + 0
     for (size_t i = 0; i < PREFIX_SIZE + 2; ++i) {
@@ -32,7 +33,7 @@ int main() {
   }
 
   { // common prefix + 1
-    Tree tree;
+    Tree<MallocAlloc> tree;
 
     uint8_t key[PREFIX_SIZE + 4]; // prefix + eq + eq + diff + 0
     for (size_t i = 0; i < PREFIX_SIZE + 3; ++i) {
@@ -55,7 +56,7 @@ int main() {
   }
 
   { // common prefix with a non-leaf
-    Tree tree;
+    Tree<MallocAlloc> tree;
 
     uint8_t key[PREFIX_SIZE + 5]; // prefix + eq + eq + eq + diff + 0
     for (size_t i = 0; i < PREFIX_SIZE + 4; ++i) {
@@ -91,7 +92,7 @@ int main() {
   }
 
   { // test min key
-    Tree tree;
+    Tree<MallocAlloc> tree;
 
     uint8_t key[3];
     key[0] = 1;

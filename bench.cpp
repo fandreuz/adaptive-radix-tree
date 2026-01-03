@@ -1,3 +1,4 @@
+#include "src/allocator.hpp"
 #include "src/nodes.hpp"
 #include <cassert>
 #include <chrono>
@@ -44,7 +45,7 @@ int main() {
   // write(perf_ctl_fd, "enable\n", 8);
 
   const auto start_bench = std::chrono::steady_clock::now();
-  Tree tree;
+  Tree<MallocAlloc> tree;
 
   char *start = addr, *end;
   long value = 0;

@@ -36,7 +36,6 @@ template <Type NT, bool END_CHILD> Header* makeNewNode() {
   header->type = NT;
   header->prefix_len = 0;
   header->prefix = nullptr;
-  header->version = 0;
   header->min_key = 255;
   header->children_count = 0;
 

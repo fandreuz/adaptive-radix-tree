@@ -1,12 +1,10 @@
 #include "actions.hpp"
-#include "lock.hpp"
 #include "utils.hpp"
 #include <algorithm>
 #include <cassert>
 
 namespace Actions {
 
-// TODO: sync
 void findMinimumKey(const void* node, const uint8_t*& out_key,
                     size_t& out_len) {
   while (true) {
@@ -95,30 +93,15 @@ bool prefixMatches(const Nodes::Header* node_header, KEY, size_t depth,
 }
 
 const Nodes::Value* searchImpl(Nodes::Header* root, KEY) {
-  Nodes::Header* parent;
-  Nodes::Header* node_header;
-  size_t depth;
-  Nodes::version_t version;
-  Nodes::version_t parent_version;
-
-RESTART_POINT:
-  node_header = root;
-  parent = nullptr;
-  depth = 0;
+  Nodes::Header* node_header = root;
+  size_t depth = 0;
 
   while (true) {
     assert(node_header != nullptr);
     assert(!Nodes::isLeaf(node_header));
     assert(depth < key_len);
 
-    READ_LOCK_OR_RESTART(node_header, version)
-    if (parent != nullptr) {
-      // TODO: get rid of the if
-      READ_UNLOCK_OR_RESTART(parent, parent_version)
-    }
-
     if (key_len < depth + node_header->prefix_len) {
-      READ_UNLOCK_OR_RESTART(node_header, version)
       return nullptr;
     }
 
@@ -129,7 +112,6 @@ RESTART_POINT:
       bool match = prefixMatches(node_header, KARGS, depth, first_diff, min_key,
                                  min_key_len);
       if (!match) {
-        READ_UNLOCK_OR_RESTART(node_header, version)
         return nullptr;
       }
     }
@@ -142,15 +124,11 @@ RESTART_POINT:
       if (key_end_child == nullptr) {
         return nullptr;
       }
-      READ_UNLOCK_OR_RESTART(node_header, version)
       return &(key_end_child->value);
     }
 
     void** next_src = Nodes::findChild(node_header, key[depth]);
-    CHECK_OR_RESTART(node_header, version)
-
     if (next_src == nullptr) {
-      READ_UNLOCK_OR_RESTART(node_header, version)
       return nullptr;
     }
 
@@ -161,7 +139,6 @@ RESTART_POINT:
       auto leaf = Nodes::asLeaf(*next_src);
       bool match =
           key_len == leaf->key_len && memcmp(Nodes::getKey(leaf), KARGS) == 0;
-      READ_UNLOCK_OR_RESTART(node_header, version)
       return match ? &leaf->value : nullptr;
     } else if (depth == key_len) {
       auto key_end_child =
@@ -169,12 +146,9 @@ RESTART_POINT:
       if (key_end_child == nullptr) {
         return nullptr;
       }
-      READ_UNLOCK_OR_RESTART(node_header, version)
       return &key_end_child->value;
     }
 
-    parent = node_header;
-    parent_version = version;
     node_header = Nodes::asHeader(*next_src);
   }
 }
@@ -250,41 +224,25 @@ void* splitLeafPrefix(Nodes::Leaf* old_leaf, KEY, Nodes::Value value,
 
 void insertImpl(Nodes::Header* root, KEY, Nodes::Value value) {
   Nodes::Header** node_header_ptr;
-  Nodes::Header* parent;
   size_t depth;
-  Nodes::version_t parent_version;
-  Nodes::version_t version;
 
-RESTART_POINT:
-  parent = nullptr;
-
-  READ_LOCK_OR_RESTART(root, version)
   void** next_src = Nodes::findChild(root, key[0]);
-  CHECK_OR_RESTART(root, version)
-
   if (next_src == nullptr || *next_src == nullptr) {
     assert(!Nodes::isFull(root));
-    UPGRADE_TO_WRITE_LOCK_OR_RESTART(root, version)
     Nodes::addChild(root, KARGS, value, 0);
-    Lock::writeUnlock(root);
     return;
   }
 
   depth = 1;
   if (Nodes::isLeaf(*next_src)) {
-    UPGRADE_TO_WRITE_LOCK_OR_RESTART(root, version)
     *next_src = splitLeafPrefix(Nodes::asLeaf(*next_src), KARGS, value, depth);
-    Lock::writeUnlock(root);
     return;
   }
 
-  parent = root;
-  parent_version = version;
   node_header_ptr = (Nodes::Header**)next_src;
 
   while (true) {
     Nodes::Header* node_header = *node_header_ptr;
-    READ_LOCK_OR_RESTART(node_header, version)
 
     assert(node_header_ptr != nullptr);
     assert(node_header != nullptr);
@@ -298,10 +256,6 @@ RESTART_POINT:
                                         min_key, min_key_len);
     depth += first_diff;
     if (!prefix_matches && depth < key_len) {
-      UPGRADE_TO_WRITE_LOCK_OR_RESTART(parent, parent_version)
-      UPGRADE_TO_WRITE_LOCK_OR_RESTART_WITH_LOCKED_NODE(node_header, version,
-                                                        parent)
-
       Nodes::Header* new_node_header =
           Nodes::makeNewNode<Nodes::Type::NODE4, true>();
       Nodes::Node4* new_node = (Nodes::Node4*)new_node_header->getNode();
@@ -347,47 +301,27 @@ RESTART_POINT:
       assert(*node_header_ptr != root);
       *node_header_ptr = new_node_header;
 
-      Lock::writeUnlock(node_header);
-      Lock::writeUnlock(parent);
-
       return;
     }
 
     if (depth == key_len) {
-      UPGRADE_TO_WRITE_LOCK_OR_RESTART(node_header, version)
-      READ_UNLOCK_OR_RESTART_WITH_LOCKED_NODE(parent, parent_version,
-                                              node_header)
       Nodes::addChildKeyEnd(node_header, KARGS, value);
-      Lock::writeUnlock(node_header);
       return;
     }
 
     assert(depth < key_len);
     void** next_src = Nodes::findChild(node_header, key[depth]);
-    CHECK_OR_RESTART(node_header, version)
-
     if (next_src == nullptr || *next_src == nullptr) {
       if (!Nodes::isFull(node_header) || depth == key_len) {
-        UPGRADE_TO_WRITE_LOCK_OR_RESTART(node_header, version)
-        READ_UNLOCK_OR_RESTART_WITH_LOCKED_NODE(parent, parent_version,
-                                                node_header)
         if (depth < key_len) {
           Nodes::addChild(*node_header_ptr, KARGS, value, depth);
         } else {
           Nodes::addChildKeyEnd(node_header, KARGS, value);
         }
-        Lock::writeUnlock(node_header);
       } else {
-        UPGRADE_TO_WRITE_LOCK_OR_RESTART(parent, parent_version)
-        UPGRADE_TO_WRITE_LOCK_OR_RESTART_WITH_LOCKED_NODE(node_header, version,
-                                                          parent)
-
         assert(*node_header_ptr != root); // root should not need to be grown
         Nodes::grow(node_header_ptr);
         Nodes::addChild(*node_header_ptr, KARGS, value, depth);
-
-        Lock::writeUnlockObsolete(node_header);
-        Lock::writeUnlock(parent);
 
         assert(*node_header_ptr != node_header);
         // TODO: Should not free until nobody references it
@@ -396,25 +330,17 @@ RESTART_POINT:
       return;
     }
 
-    READ_UNLOCK_OR_RESTART(parent, parent_version)
-
     depth += 1;
 
     if (Nodes::isLeaf(*next_src)) {
-      UPGRADE_TO_WRITE_LOCK_OR_RESTART(node_header, version)
       *next_src =
           splitLeafPrefix(Nodes::asLeaf(*next_src), KARGS, value, depth);
-      Lock::writeUnlock(node_header);
       return;
     } else if (depth == key_len) {
-      UPGRADE_TO_WRITE_LOCK_OR_RESTART(node_header, version)
       Nodes::addChildKeyEnd(*((Nodes::Header**)next_src), KARGS, value);
-      Lock::writeUnlock(node_header);
       return;
     }
 
-    parent = node_header;
-    parent_version = version;
     node_header_ptr = (Nodes::Header**)next_src;
   }
 }

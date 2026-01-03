@@ -15,7 +15,7 @@
 namespace Nodes {
 
 typedef long Value;
-typedef uint16_t prefix_size_t;
+typedef uint8_t prefix_size_t;
 typedef uint64_t version_t;
 
 struct Leaf;
@@ -33,16 +33,14 @@ enum class Type : uint8_t { NODE4, NODE16, NODE48, NODE256 };
 struct Header {
   Type type;
   uint8_t children_count;
-  // Compressed prefix length. Real prefix length in Header::prefix
-  // is capped at PREFIX_SIZE.
-  prefix_size_t prefix_len;
   // Value of the minimum key bit currently stored in this node.
   // Valid only for Node48 and Node256
   uint8_t min_key;
+  // Compressed prefix length. Real prefix length in Header::prefix
+  // is capped at PREFIX_SIZE.
+  prefix_size_t prefix_len;
   // Compressed prefix
   uint8_t* prefix;
-  // For synchronization
-  version_t version;
 
   void* getNode() const;
 };

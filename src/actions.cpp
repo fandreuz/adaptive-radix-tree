@@ -324,7 +324,6 @@ void insertImpl(Nodes::Header* root, KEY, Nodes::Value value) {
         Nodes::addChild(*node_header_ptr, KARGS, value, depth);
 
         assert(*node_header_ptr != node_header);
-        // TODO: Should not free until nobody references it
         free(node_header->prefix);
         free(node_header);
       }

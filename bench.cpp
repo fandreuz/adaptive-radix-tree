@@ -1,4 +1,4 @@
-#include "src/actions.hpp"
+#include "src/nodes.hpp"
 #include <cassert>
 #include <chrono>
 #include <cstdint>
@@ -44,12 +44,12 @@ int main() {
   // write(perf_ctl_fd, "enable\n", 8);
 
   const auto start_bench = std::chrono::steady_clock::now();
-  Nodes::Header* root = Nodes::makeNewRoot();
+  Tree tree;
 
   char *start = addr, *end;
   long value = 0;
   while ((end = strchrnul(start, '\n')) < addr + sb.st_size) {
-    Actions::insert(root, (uint8_t*)start, end - start, value++);
+    tree.insert((uint8_t*)start, end - start, value++);
 
     if (*end == '\n') {
       start = end + 1;
@@ -70,7 +70,7 @@ int main() {
   start = addr;
   value = 0;
   while ((end = strchrnul(start, '\n')) < addr + sb.st_size) {
-    const Nodes::Value* v = Actions::search(root, (uint8_t*)start, end - start);
+    const Nodes::Value* v = tree.search((uint8_t*)start, end - start);
     assert(v != nullptr);
     assert(*v == value);
     value++;
@@ -83,6 +83,4 @@ int main() {
   }
 
   munmap(addr, sb.st_size);
-
-  Nodes::freeRecursive(root);
 }

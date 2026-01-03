@@ -3,13 +3,7 @@
 #include <algorithm>
 #include <emmintrin.h>
 
-namespace Nodes {
-
-uint8_t* Header::getPrefix() {
-  return (uint8_t*)((uintptr_t)this) + sizeof(Header);
-}
-
-void* Header::getNode() { return (void*)(getPrefix() + PREFIX_SIZE); }
+using namespace Nodes;
 
 #define DISPATCH_CHILDREN_COUNT(action, nt)                                    \
   if (nt == Type::NODE4)                                                       \
@@ -22,13 +16,19 @@ void* Header::getNode() { return (void*)(getPrefix() + PREFIX_SIZE); }
     action(256);                                                               \
   ShouldNotReachHere;
 
+bool Nodes::isFull(const Header* node_header) {
+#define ISFULL_ACTION(N) return node_header->children_count == N
+  DISPATCH_CHILDREN_COUNT(ISFULL_ACTION, node_header->type)
+  return false;
+}
+
 size_t nodeSize(Type nt) {
 #define SIZEOF_ACTION(N) return sizeof(Node##N)
   DISPATCH_CHILDREN_COUNT(SIZEOF_ACTION, nt)
   return 0;
 }
 
-template <Type NT, bool END_CHILD> Header* makeNewNode() {
+template <Type NT, bool END_CHILD> Header* Tree::makeNewNode() {
   // O1+ will inline the call to nodeSize to a constant after
   // templating
   size_t node_size = nodeSize(NT);
@@ -50,16 +50,16 @@ template <Type NT, bool END_CHILD> Header* makeNewNode() {
   return header;
 }
 
-template Header* makeNewNode<Type::NODE4, true>();
-template Header* makeNewNode<Type::NODE16, true>();
-template Header* makeNewNode<Type::NODE48, true>();
-template Header* makeNewNode<Type::NODE256, true>();
+template Header* Tree::makeNewNode<Type::NODE4, true>();
+template Header* Tree::makeNewNode<Type::NODE16, true>();
+template Header* Tree::makeNewNode<Type::NODE48, true>();
+template Header* Tree::makeNewNode<Type::NODE256, true>();
 // Only the root node needs to be end-child-less
-template Header* makeNewNode<Type::NODE256, false>();
+template Header* Tree::makeNewNode<Type::NODE256, false>();
 
-Header* makeNewRoot() { return makeNewNode<Type::NODE256, true>(); }
+Header* Tree::makeNewRoot() { return makeNewNode<Type::NODE256, true>(); }
 
-void freeNode(void* node) {
+void Tree::freeNode(void* node) {
   assert(node != nullptr);
   if (isLeaf(node)) {
     free(asLeaf(node));
@@ -68,7 +68,7 @@ void freeNode(void* node) {
   }
 }
 
-void freeRecursive(Header* node_header) {
+void Tree::freeRecursive(Header* node_header) {
   free(*findChildKeyEnd(node_header));
 
   if (node_header->type == Type::NODE4) {
@@ -107,7 +107,7 @@ void freeRecursive(Header* node_header) {
   free(node_header);
 }
 
-Leaf* makeNewLeaf(KEY, Value value) {
+Leaf* Tree::makeNewLeaf(KEY, Value value) {
   Leaf* leaf = (Leaf*)malloc(sizeof(Leaf) + key_len);
   assert((((uintptr_t)leaf) & 1) == 0);
 
@@ -117,13 +117,7 @@ Leaf* makeNewLeaf(KEY, Value value) {
   return leaf;
 }
 
-bool isFull(const Header* node_header) {
-#define ISFULL_ACTION(N) return node_header->children_count == N
-  DISPATCH_CHILDREN_COUNT(ISFULL_ACTION, node_header->type)
-  return false;
-}
-
-void grow(Header** node_header) {
+void Tree::grow(Header** node_header) {
   assert(isFull(*node_header));
 
   Header* new_header;
@@ -200,11 +194,11 @@ void addChildNode16(Header* node_header, uint8_t key, void* child) {
   node->children[index] = child;
 }
 
-void addChild(Header* node_header, KEY, Value value, size_t depth) {
+void Tree::addChild(Header* node_header, KEY, Value value, size_t depth) {
   addChild(node_header, key[depth], smuggleLeaf(makeNewLeaf(KARGS, value)));
 }
 
-void addChild(Header* node_header, uint8_t key, void* child) {
+void Tree::addChild(Header* node_header, uint8_t key, void* child) {
   assert(!isFull(node_header));
 
   if (node_header->type == Type::NODE4) {
@@ -237,11 +231,11 @@ void addChild(Header* node_header, uint8_t key, void* child) {
   ++(node_header->children_count);
 }
 
-void addChildKeyEnd(Header* node_header, KEY, Value value) {
+void Tree::addChildKeyEnd(Header* node_header, KEY, Value value) {
   addChildKeyEnd(node_header, makeNewLeaf(KARGS, value));
 }
 
-void addChildKeyEnd(Header* node_header, Leaf* child) {
+void Tree::addChildKeyEnd(Header* node_header, Leaf* child) {
   size_t node_size = nodeSize(node_header->type);
   void* node = node_header->getNode();
   void** key_end_child = (void**)((uint8_t*)node + node_size);
@@ -259,7 +253,7 @@ void** findChildNode16(Header* node_header, uint8_t key) {
   return bitfield ? &(node->children[__builtin_ctz(bitfield)]) : nullptr;
 }
 
-void** findChild(Header* node_header, uint8_t key) {
+void** Tree::findChild(Header* node_header, uint8_t key) const {
   if (node_header->type == Type::NODE4) {
     auto node = (Node4*)node_header->getNode();
     for (uint8_t i = 0; i < node_header->children_count; ++i) {
@@ -287,11 +281,19 @@ void** findChild(Header* node_header, uint8_t key) {
   return nullptr;
 }
 
-Leaf** findChildKeyEnd(Header* node_header) {
+Leaf** Tree::findChildKeyEnd(Header* node_header) const {
   size_t node_size = nodeSize(node_header->type);
   void* node = node_header->getNode();
   void* key_end_child = (uint8_t*)node + node_size;
   return (Leaf**)key_end_child;
 }
+
+namespace Nodes {
+
+uint8_t* Header::getPrefix() {
+  return (uint8_t*)((uintptr_t)this) + sizeof(Header);
+}
+
+void* Header::getNode() { return (void*)(getPrefix() + PREFIX_SIZE); }
 
 } // namespace Nodes

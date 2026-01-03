@@ -67,19 +67,7 @@ struct Node256 {
   void* children[256];
 };
 
-template <Type NT, bool END_CHILD> Header* makeNewNode();
-Header* makeNewRoot();
-void freeRecursive(Header* node_header);
-
 bool isFull(const Header* node_header);
-void grow(Header** node_header);
-
-void addChild(Header* node_header, KEY, Value value, size_t depth);
-void addChild(Header* node_header, uint8_t key, void* child);
-void addChildKeyEnd(Header* node_header, KEY, Value value);
-void addChildKeyEnd(Header* node_header, Leaf* child);
-void** findChild(Nodes::Header* node_header, uint8_t key);
-Leaf** findChildKeyEnd(Header* node_header);
 
 inline Header* asHeader(const void* ptr) {
   assert(!isLeaf(ptr));
@@ -108,8 +96,61 @@ inline void* smuggleLeaf(const Leaf* leaf) {
   return (void*)(((uintptr_t)leaf) + 1);
 }
 
-Leaf* makeNewLeaf(KEY, Value value);
-
 } // namespace Nodes
+
+using namespace Nodes;
+class Tree {
+
+private:
+  Nodes::Header* root;
+
+  template <Type NT, bool END_CHILD> Header* makeNewNode();
+  Header* makeNewRoot();
+  Leaf* makeNewLeaf(KEY, Value value);
+
+  void freeNode(void* node);
+  void freeRecursive(Header* node_header);
+
+  void grow(Header** node_header);
+
+  void addChild(Header* node_header, KEY, Value value, size_t depth);
+  void addChild(Header* node_header, uint8_t key, void* child);
+  void addChildKeyEnd(Header* node_header, KEY, Value value);
+  void addChildKeyEnd(Header* node_header, Leaf* child);
+
+  void** findChild(Nodes::Header* node_header, uint8_t key) const;
+  Leaf** findChildKeyEnd(Header* node_header) const;
+
+  void findMinimumKey(const void* node, const uint8_t*& out_key,
+                      size_t& out_len) const;
+  void* splitLeafPrefix(Leaf* old_leaf, KEY, Value value, size_t depth);
+  bool prefixMatches(Header* node_header, KEY, size_t depth, size_t& first_diff,
+                     const uint8_t*& min_key, size_t& min_key_len);
+
+public:
+  Tree() : root(makeNewRoot()) {}
+  ~Tree() { freeRecursive(root); }
+
+  void findMinimumKey(const uint8_t*& out_key, size_t& out_len) const {
+    findMinimumKey(root, out_key, out_len);
+  }
+
+  const Value* searchImpl(KEY);
+  const Value* search(KEY) { return searchImpl(KARGS); }
+  inline const Value* search(const char* key) {
+    size_t len = strlen(key) + 1;
+    return search((const uint8_t*)key, len);
+  }
+
+  void insertImpl(KEY, Value value);
+  inline void insert(KEY, Value value) {
+    assert(key_len > 0);
+    insertImpl(KARGS, value);
+  }
+  inline void insert(const char* key, Value value) {
+    size_t len = strlen(key) + 1;
+    insert((const uint8_t*)key, len, value);
+  }
+};
 
 #endif // NODES

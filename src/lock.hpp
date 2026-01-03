@@ -1,3 +1,6 @@
+#ifndef LOCK
+#define LOCK
+
 #include "nodes.hpp"
 
 namespace Lock {
@@ -25,9 +28,16 @@ inline bool isObsolete(Nodes::version_t version) { return (version & 1) == 1; }
 
 #define RESTART goto RESTART_POINT;
 
+#define DECREMENT(node_header)                                                 \
+  if (--node_header->reference_count == 0) {                                   \
+    free(node_header);                                                         \
+  }
+
 #define READ_LOCK_OR_RESTART(node_header, version)                             \
+  ++node_header->reference_count;                                              \
   version = Lock::awaitNodeUnlocked(node_header);                              \
   if (Lock::isObsolete(version)) {                                             \
+    DECREMENT(node_header)                                                     \
     RESTART                                                                    \
   }
 
@@ -36,6 +46,9 @@ inline bool isObsolete(Nodes::version_t version) { return (version & 1) == 1; }
     Nodes::version_t actual;                                                   \
     __atomic_load(&(node_header->version), &actual, __ATOMIC_SEQ_CST);         \
     if (expected != actual) {                                                  \
+      if (Lock::isObsolete(version)) {                                         \
+        DECREMENT(node_header)                                                 \
+      }                                                                        \
       RESTART                                                                  \
     }                                                                          \
   }
@@ -75,3 +88,5 @@ inline bool isObsolete(Nodes::version_t version) { return (version & 1) == 1; }
 
 #define CHECK_OR_RESTART(node_header, expected)                                \
   READ_UNLOCK_OR_RESTART(node_header, expected)
+
+#endif // LOCK

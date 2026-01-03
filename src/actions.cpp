@@ -48,7 +48,7 @@ void findMinimumKey(const void* node, const uint8_t*& out_key,
 }
 
 // True only if a full match is found
-bool prefixMatches(const Nodes::Header* node_header, KEY, size_t depth,
+bool prefixMatches(Nodes::Header* node_header, KEY, size_t depth,
                    size_t& first_diff, const uint8_t*& min_key,
                    size_t& min_key_len) {
   min_key = nullptr;
@@ -58,7 +58,7 @@ bool prefixMatches(const Nodes::Header* node_header, KEY, size_t depth,
     const size_t prefix_len = Nodes::capPrefixSize(node_header->prefix_len);
     const size_t stop = std::min(prefix_len, key_len - depth);
     for (i = 0; i < stop; ++i) {
-      if (key[i + depth] != node_header->prefix[i]) {
+      if (key[i + depth] != node_header->getPrefix()[i]) {
         first_diff = i;
         return false;
       }
@@ -200,8 +200,7 @@ void* splitLeafPrefix(Nodes::Leaf* old_leaf, KEY, Nodes::Value value,
 
   new_node_header->prefix_len = i - depth;
   size_t actual_prefix_size = Nodes::capPrefixSize(new_node_header->prefix_len);
-  new_node_header->prefix = (uint8_t*)malloc(actual_prefix_size);
-  memcpy(new_node_header->prefix, Nodes::getKey(old_leaf) + depth,
+  memcpy(new_node_header->getPrefix(), Nodes::getKey(old_leaf) + depth,
          actual_prefix_size);
 
   if (i == key_len) {
@@ -265,8 +264,8 @@ void insertImpl(Nodes::Header* root, KEY, Nodes::Value value) {
       new_node_header->prefix_len = first_diff;
       size_t actual_prefix_len =
           Nodes::capPrefixSize(new_node_header->prefix_len);
-      new_node_header->prefix = (uint8_t*)malloc(actual_prefix_len);
-      memcpy(new_node_header->prefix, node_header->prefix, actual_prefix_len);
+      memcpy(new_node_header->getPrefix(), node_header->getPrefix(),
+             actual_prefix_len);
 
       // shorten old prefix: it'll be a suffix of the old prefix.
       // +1 because an element of the prefix (the first diff) will
@@ -285,12 +284,13 @@ void insertImpl(Nodes::Header* root, KEY, Nodes::Value value) {
 
       uint8_t diff_bit;
       if (min_key == nullptr) {
-        diff_bit = node_header->prefix[first_diff];
-        memmove(node_header->prefix, node_header->prefix + first_diff + 1,
+        diff_bit = node_header->getPrefix()[first_diff];
+        memmove(node_header->getPrefix(),
+                node_header->getPrefix() + first_diff + 1,
                 Nodes::capPrefixSize(node_header->prefix_len));
       } else {
         diff_bit = min_key[depth];
-        memcpy(node_header->prefix, min_key + depth + 1,
+        memcpy(node_header->getPrefix(), min_key + depth + 1,
                Nodes::capPrefixSize(node_header->prefix_len));
       }
 
@@ -325,6 +325,7 @@ void insertImpl(Nodes::Header* root, KEY, Nodes::Value value) {
 
         assert(*node_header_ptr != node_header);
         // TODO: Should not free until nobody references it
+        free(node_header->prefix);
         free(node_header);
       }
       return;

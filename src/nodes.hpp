@@ -42,7 +42,8 @@ struct Header {
   // Compressed prefix
   uint8_t* prefix;
 
-  void* getNode() const;
+  uint8_t* getPrefix();
+  void* getNode();
 };
 
 struct Node4 {

@@ -159,7 +159,8 @@ private:
 
   void findMinimumKey(const void* node, const uint8_t*& out_key,
                       size_t& out_len) const;
-  void* splitLeafPrefix(Leaf* old_leaf, KEY, Value value, size_t depth, Leaf** out_leaf);
+  void* splitLeafPrefix(Leaf* old_leaf, KEY, Value value, size_t depth,
+                        Leaf** out_leaf);
   bool prefixMatches(Header* node_header, KEY, size_t depth, size_t& first_diff,
                      const uint8_t*& min_key, size_t& min_key_len);
   void copyHeader(Header* new_header, Header* old_header);
@@ -708,7 +709,8 @@ Leaf* Tree<Allocator>::insertImpl(KEY, Value value) {
   depth = 1;
   if (isLeaf(*next_src)) {
     Leaf* out_leaf = nullptr;
-    *next_src = splitLeafPrefix(asLeaf(*next_src), KARGS, value, depth, &out_leaf);
+    *next_src =
+        splitLeafPrefix(asLeaf(*next_src), KARGS, value, depth, &out_leaf);
     assert(out_leaf != nullptr);
     return out_leaf;
   }
@@ -808,7 +810,8 @@ Leaf* Tree<Allocator>::insertImpl(KEY, Value value) {
 
     if (isLeaf(*next_src)) {
       Leaf* out_leaf = nullptr;
-      *next_src = splitLeafPrefix(asLeaf(*next_src), KARGS, value, depth, &out_leaf);
+      *next_src =
+          splitLeafPrefix(asLeaf(*next_src), KARGS, value, depth, &out_leaf);
       assert(out_leaf != nullptr);
       return out_leaf;
     } else if (depth == key_len) {

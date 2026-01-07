@@ -150,7 +150,6 @@ private:
 
   void grow(Header** node_header);
 
-  void addChild(Header* node_header, KEY, Value value, size_t depth);
   void addChild(Header* node_header, uint8_t key, void* child);
   void addChildKeyEnd(Header* node_header, KEY, Value value);
   void addChildKeyEnd(Header* node_header, Leaf* child);
@@ -160,7 +159,7 @@ private:
 
   void findMinimumKey(const void* node, const uint8_t*& out_key,
                       size_t& out_len) const;
-  void* splitLeafPrefix(Leaf* old_leaf, KEY, Value value, size_t depth);
+  void* splitLeafPrefix(Leaf* old_leaf, KEY, Value value, size_t depth, Leaf** out_leaf);
   bool prefixMatches(Header* node_header, KEY, size_t depth, size_t& first_diff,
                      const uint8_t*& min_key, size_t& min_key_len);
   void copyHeader(Header* new_header, Header* old_header);
@@ -180,14 +179,14 @@ public:
     return search((const uint8_t*)key, len);
   }
 
-  void insertImpl(KEY, Value value);
-  void insert(KEY, Value value) {
+  Leaf* insertImpl(KEY, Value value);
+  Leaf* insert(KEY, Value value) {
     assert(key_len > 0);
-    insertImpl(KARGS, value);
+    return insertImpl(KARGS, value);
   }
-  void insert(const char* key, Value value) {
+  Leaf* insert(const char* key, Value value) {
     size_t len = strlen(key) + 1;
-    insert((const uint8_t*)key, len, value);
+    return insert((const uint8_t*)key, len, value);
   }
 };
 
@@ -382,12 +381,6 @@ void addChildNode16(Header* node_header, uint8_t key, void* child) {
   shiftRight(node->keys, node->children, node_header->children_count, index);
   node->keys[index] = key;
   node->children[index] = child;
-}
-
-template <typename Allocator>
-void Tree<Allocator>::addChild(Header* node_header, KEY, Value value,
-                               size_t depth) {
-  addChild(node_header, key[depth], smuggleLeaf(makeNewLeaf(KARGS, value)));
 }
 
 template <typename Allocator>
@@ -656,7 +649,7 @@ static void insertInOrder(Node4* new_node, uint8_t k1, uint8_t k2, void* v1,
 // Returns the new header
 template <typename Allocator>
 void* Tree<Allocator>::splitLeafPrefix(Leaf* old_leaf, KEY, Value value,
-                                       size_t depth) {
+                                       size_t depth, Leaf** out_leaf) {
   // What is the common key segment?
   size_t i = depth;
   const size_t stop = std::min(key_len, old_leaf->key_len);
@@ -665,6 +658,7 @@ void* Tree<Allocator>::splitLeafPrefix(Leaf* old_leaf, KEY, Value value,
   }
   if (i == key_len && key_len == old_leaf->key_len) {
     old_leaf->value = value;
+    *out_leaf = old_leaf;
     return smuggleLeaf(old_leaf);
   }
   assert(i == key_len || i == old_leaf->key_len ||
@@ -683,13 +677,15 @@ void* Tree<Allocator>::splitLeafPrefix(Leaf* old_leaf, KEY, Value value,
     addChildKeyEnd(new_node_header, KARGS, value);
     addChild(new_node_header, getKey(old_leaf)[i], smuggleLeaf(old_leaf));
     new_node_header->children_count = 1;
+    *out_leaf = *findChildKeyEnd(new_node_header);
   } else if (i == old_leaf->key_len) {
-    addChild(new_node_header, KARGS, value, i);
+    *out_leaf = makeNewLeaf(KARGS, value);
+    addChild(new_node_header, key[i], smuggleLeaf(*out_leaf));
     addChildKeyEnd(new_node_header, old_leaf);
     new_node_header->children_count = 1;
   } else {
-    Leaf* new_leaf = makeNewLeaf(KARGS, value);
-    insertInOrder(new_node, key[i], getKey(old_leaf)[i], smuggleLeaf(new_leaf),
+    *out_leaf = makeNewLeaf(KARGS, value);
+    insertInOrder(new_node, key[i], getKey(old_leaf)[i], smuggleLeaf(*out_leaf),
                   smuggleLeaf(old_leaf));
     new_node_header->children_count = 2;
   }
@@ -697,21 +693,24 @@ void* Tree<Allocator>::splitLeafPrefix(Leaf* old_leaf, KEY, Value value,
 }
 
 template <typename Allocator>
-void Tree<Allocator>::insertImpl(KEY, Value value) {
+Leaf* Tree<Allocator>::insertImpl(KEY, Value value) {
   Header** node_header_ptr;
   size_t depth;
 
   void** next_src = findChild(root, key[0]);
   if (next_src == nullptr || *next_src == nullptr) {
     assert(!isFull(root));
-    addChild(root, KARGS, value, 0);
-    return;
+    Leaf* leaf = makeNewLeaf(KARGS, value);
+    addChild(root, key[0], smuggleLeaf(leaf));
+    return leaf;
   }
 
   depth = 1;
   if (isLeaf(*next_src)) {
-    *next_src = splitLeafPrefix(asLeaf(*next_src), KARGS, value, depth);
-    return;
+    Leaf* out_leaf = nullptr;
+    *next_src = splitLeafPrefix(asLeaf(*next_src), KARGS, value, depth, &out_leaf);
+    assert(out_leaf != nullptr);
+    return out_leaf;
   }
 
   node_header_ptr = (Header**)next_src;
@@ -775,12 +774,12 @@ void Tree<Allocator>::insertImpl(KEY, Value value) {
       assert(*node_header_ptr != root);
       *node_header_ptr = new_node_header;
 
-      return;
+      return new_leaf;
     }
 
     if (depth == key_len) {
       addChildKeyEnd(node_header, KARGS, value);
-      return;
+      return *findChildKeyEnd(node_header);
     }
 
     assert(depth < key_len);
@@ -788,27 +787,33 @@ void Tree<Allocator>::insertImpl(KEY, Value value) {
     if (next_src == nullptr || *next_src == nullptr) {
       if (!isFull(node_header) || depth == key_len) {
         if (depth < key_len) {
-          addChild(*node_header_ptr, KARGS, value, depth);
+          Leaf* leaf = makeNewLeaf(KARGS, value);
+          addChild(*node_header_ptr, key[depth], smuggleLeaf(leaf));
+          return leaf;
         } else {
           addChildKeyEnd(node_header, KARGS, value);
+          return *findChildKeyEnd(node_header);
         }
       } else {
         assert(*node_header_ptr != root); // root should not need to be grown
         grow(node_header_ptr);
-        addChild(*node_header_ptr, KARGS, value, depth);
+        Leaf* leaf = makeNewLeaf(KARGS, value);
+        addChild(*node_header_ptr, key[depth], smuggleLeaf(leaf));
         assert(*node_header_ptr != node_header);
+        return leaf;
       }
-      return;
     }
 
     depth += 1;
 
     if (isLeaf(*next_src)) {
-      *next_src = splitLeafPrefix(asLeaf(*next_src), KARGS, value, depth);
-      return;
+      Leaf* out_leaf = nullptr;
+      *next_src = splitLeafPrefix(asLeaf(*next_src), KARGS, value, depth, &out_leaf);
+      assert(out_leaf != nullptr);
+      return out_leaf;
     } else if (depth == key_len) {
       addChildKeyEnd(*((Header**)next_src), KARGS, value);
-      return;
+      return *findChildKeyEnd(*((Header**)next_src));
     }
 
     node_header_ptr = (Header**)next_src;
